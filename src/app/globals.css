@@ -1,26 +1,63 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Cyberpunk Color Palette */
+  --cyber-dark: #0A0A1A;
+  --cyber-darker: #050510;
+  --cyber-light: #1A1A2E;
+  --neon-blue: #00F0FF;
+  --neon-pink: #FF00FF;
+  --neon-green: #39FF14;
+  --neon-purple: #BD00FF;
+  --neon-orange: #FF6600;
+  --cyber-text: #E0E0E0;
+  --cyber-text-dim: #A0A0A0;
+  
+  /* Legacy variables for compatibility */
+  --background: var(--cyber-dark);
+  --foreground: var(--cyber-text);
 }
 
 @theme inline {
+  /* Cyberpunk Colors */
+  --color-cyber-dark: var(--cyber-dark);
+  --color-cyber-darker: var(--cyber-darker);
+  --color-cyber-light: var(--cyber-light);
+  --color-neon-blue: var(--neon-blue);
+  --color-neon-pink: var(--neon-pink);
+  --color-neon-green: var(--neon-green);
+  --color-neon-purple: var(--neon-purple);
+  --color-neon-orange: var(--neon-orange);
+  --color-cyber-text: var(--cyber-text);
+  --color-cyber-text-dim: var(--cyber-text-dim);
+  
+  /* Legacy colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  /* Cyberpunk Glow Shadows */
+  --shadow-glow-blue: 0 0 15px var(--neon-blue), 0 0 30px var(--neon-blue);
+  --shadow-glow-pink: 0 0 15px var(--neon-pink), 0 0 30px var(--neon-pink);
+  --shadow-glow-green: 0 0 15px var(--neon-green), 0 0 30px var(--neon-green);
+  --shadow-glow-purple: 0 0 15px var(--neon-purple), 0 0 30px var(--neon-purple);
+  --shadow-glow-orange: 0 0 15px var(--neon-orange), 0 0 30px var(--neon-orange);
+  
+  /* Subtle glows for hover effects */
+  --shadow-glow-blue-sm: 0 0 8px var(--neon-blue);
+  --shadow-glow-pink-sm: 0 0 8px var(--neon-pink);
+  --shadow-glow-green-sm: 0 0 8px var(--neon-green);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--cyber-dark);
+  color: var(--cyber-text);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
 }

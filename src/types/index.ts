@@ -6,7 +6,7 @@
 // User Types
 // ============================================================================
 
-export type UserRole = 'admin' | 'upt_user';
+export type UserRole = 'admin' | 'uptuser';
 
 export interface UserPreferences {
   upt_name?: string;
