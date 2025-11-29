@@ -10,6 +10,7 @@
   --neon-green: #39FF14;
   --neon-purple: #BD00FF;
   --neon-orange: #FF6600;
+  --neon-cyan:  #00ffbf;
   --cyber-text: #E0E0E0;
   --cyber-text-dim: #A0A0A0;
   
@@ -28,6 +29,7 @@
   --color-neon-green: var(--neon-green);
   --color-neon-purple: var(--neon-purple);
   --color-neon-orange: var(--neon-orange);
+  --color-neon-cyan: var(--neon-cyan);
   --color-cyber-text: var(--cyber-text);
   --color-cyber-text-dim: var(--cyber-text-dim);
   
@@ -45,7 +47,8 @@
   --shadow-glow-green: 0 0 15px var(--neon-green), 0 0 30px var(--neon-green);
   --shadow-glow-purple: 0 0 15px var(--neon-purple), 0 0 30px var(--neon-purple);
   --shadow-glow-orange: 0 0 15px var(--neon-orange), 0 0 30px var(--neon-orange);
-  
+  --shadow-glow-cyan: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-cyan);
+
   /* Subtle glows for hover effects */
   --shadow-glow-blue-sm: 0 0 8px var(--neon-blue);
   --shadow-glow-pink-sm: 0 0 8px var(--neon-pink);

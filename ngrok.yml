@@ -1,0 +1,7 @@
+version: "2"
+authtoken: YOUR_NGROK_AUTHTOKEN
+tunnels:
+  dev:
+    proto: http
+    addr: 3000
+    inspect: true

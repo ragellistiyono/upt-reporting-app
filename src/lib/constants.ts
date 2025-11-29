@@ -13,7 +13,8 @@ export const INDICATOR_TYPES = [
   'PRODUKSI KONTEN',
   'INFLUENCER DAN SMR',
   'KONTEN IN-CHANGE',
-  'KONTEN WAG'
+  'KONTEN WAG',
+  'SKORING MEDIA MASSA DAN MEDIA SOSIAL'
 ] as const;
 
 export const INDICATOR_TYPE_LABELS: Record<string, string> = {
@@ -21,7 +22,8 @@ export const INDICATOR_TYPE_LABELS: Record<string, string> = {
   'PRODUKSI KONTEN': 'Produksi Konten',
   'INFLUENCER DAN SMR': 'Influencer dan SMR',
   'KONTEN IN-CHANGE': 'Konten In-Change',
-  'KONTEN WAG': 'Konten WAG'
+  'KONTEN WAG': 'Konten WAG',
+  'SKORING MEDIA MASSA DAN MEDIA SOSIAL': 'Skoring Media Massa dan Media Sosial'
 };
 
 // ============================================================================
@@ -36,6 +38,20 @@ export const SUB_CATEGORIES = [
 export const SUB_CATEGORY_LABELS: Record<string, string> = {
   'INFLUENCER': 'Influencer',
   'SMR': 'SMR'
+};
+
+// ============================================================================
+// Sub-Categories for Skoring Media
+// ============================================================================
+
+export const SKORING_MEDIA_SUB_CATEGORIES = [
+  'MEDIA MASSA',
+  'MEDIA SOSIAL'
+] as const;
+
+export const SKORING_MEDIA_SUB_CATEGORY_LABELS: Record<string, string> = {
+  'MEDIA MASSA': 'Media Massa',
+  'MEDIA SOSIAL': 'Media Sosial'
 };
 
 // ============================================================================
@@ -72,9 +88,36 @@ export const ROLE_LABELS: Record<string, string> = {
 export const APPWRITE_CONFIG = {
   DATABASE_ID: 'db_kinerja_upt',
   COLLECTIONS: {
-    SUBMISSIONS: 'submissions'
+    SUBMISSIONS: 'submissions',
+    INSTRUCTIONS: 'instructions',
+    INSTRUCTION_READS: 'instruction_reads',
+    TARGETS: 'targets'
   }
 } as const;
+
+// ============================================================================
+// Instruction Status
+// ============================================================================
+
+export const INSTRUCTION_STATUS = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED'
+} as const;
+
+export const INSTRUCTION_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  PUBLISHED: 'Published'
+};
+
+export const INSTRUCTION_TARGET_TYPE = {
+  ALL: 'ALL',
+  SPECIFIC: 'SPECIFIC'
+} as const;
+
+export const INSTRUCTION_TARGET_TYPE_LABELS: Record<string, string> = {
+  ALL: 'Semua UPT',
+  SPECIFIC: 'UPT Tertentu'
+};
 
 // ============================================================================
 // Validation Rules
