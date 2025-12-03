@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense, type FormEvent } from 'react';
+import { useState, useEffect, Suspense, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { MESSAGES } from '@/lib/constants';
@@ -15,9 +15,28 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, isAuthenticated, role, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
+
+  // Check if user is already authenticated and redirect
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && role) {
+      // User is already authenticated, redirect them
+      let redirectUrl = '/';
+      
+      if (redirect && redirect !== '/login') {
+        redirectUrl = redirect;
+      } else if (role === 'admin') {
+        redirectUrl = '/admin';
+      } else if (role === 'uptuser') {
+        redirectUrl = '/upt';
+      }
+      
+      console.log('Already authenticated, redirecting to:', redirectUrl);
+      window.location.href = redirectUrl;
+    }
+  }, [isAuthenticated, role, authLoading, redirect]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -27,22 +46,34 @@ function LoginForm() {
     try {
       await login(email, password);
       
-      // Redirect to the intended page or home
-      const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
+      // Login successful - wait a moment for state to update
+      // Then redirect appropriately
+      setTimeout(() => {
+        // Get redirect URL
+        const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
+        
+        console.log('Login successful, redirecting to:', redirectUrl);
+        window.location.href = redirectUrl;
+      }, 200);
       
-      // Small delay to ensure cookie is set before redirect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Use window.location for hard redirect to ensure cookies are properly set
-      // This is more reliable than router.push in production environments
-      window.location.href = redirectUrl;
     } catch (err) {
       console.error('Login failed:', err);
       setError(MESSAGES.ERROR.INVALID_CREDENTIALS);
       setIsLoading(false);
     }
-    // Note: Don't set isLoading to false on success - we're redirecting anyway
   };
+
+  // Show loading while checking auth status
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-linear-to-br from-pln-blue to-pln-blue-dark">
+        <div className="text-center">
+          <div className="inline-block w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-white text-sm">Memeriksa sesi...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-linear-to-br from-pln-blue to-pln-blue-dark">

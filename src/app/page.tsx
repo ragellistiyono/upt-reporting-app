@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 // Force dynamic rendering
@@ -9,22 +8,21 @@ export const dynamic = 'force-dynamic';
 
 export default function Home() {
   const { role, isLoading, isAuthenticated } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
         // Not logged in, redirect to login
-        router.push('/login');
+        window.location.href = '/login';
       } else if (role === 'admin') {
         // Admin user, redirect to admin dashboard
-        router.push('/admin');
+        window.location.href = '/admin';
       } else if (role === 'uptuser') {
         // UPT user, redirect to UPT dashboard
-        router.push('/upt');
+        window.location.href = '/upt';
       }
     }
-  }, [role, isLoading, isAuthenticated, router]);
+  }, [role, isLoading, isAuthenticated]);
 
   // Show loading state while checking authentication
   return (

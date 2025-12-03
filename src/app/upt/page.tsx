@@ -36,12 +36,18 @@ export default function UPTDashboardPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [indicatorFilter, setIndicatorFilter] = useState<string>('all');
 
-  // Verify UPT user role
+  // Verify UPT user role - redirect if not authenticated or not uptuser
   useEffect(() => {
-    if (!isLoading && role !== 'uptuser') {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        // Not authenticated, redirect to login
+        window.location.href = '/login?redirect=/upt';
+      } else if (role !== 'uptuser') {
+        // Authenticated but not UPT user, redirect to home
+        window.location.href = '/';
+      }
     }
-  }, [role, isLoading, router]);
+  }, [user, role, isLoading]);
 
   // Fetch user's submissions
   useEffect(() => {

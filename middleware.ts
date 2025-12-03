@@ -4,82 +4,17 @@ import type { NextRequest } from 'next/server';
 /**
  * Next.js Middleware for Authentication & Route Protection
  * 
- * This middleware runs on EVERY request and handles:
- * 1. Protecting admin routes (/admin/*)
- * 2. Protecting UPT routes (/upt/*)
- * 3. Redirecting authenticated users from login page to their dashboard
- * 4. Redirecting unauthenticated users to login
+ * NOTE: Due to issues with Appwrite cookies in Vercel Edge Runtime,
+ * we've simplified this middleware. Auth protection is now primarily
+ * handled client-side in AuthContext and individual page components.
+ * 
+ * This middleware only handles basic logging and passes requests through.
  */
 
-// Define protected routes
-const ADMIN_ROUTES = ['/admin'];
-const UPT_ROUTES = ['/upt'];
-const PUBLIC_ROUTES = ['/login'];
-
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Get session cookie (Appwrite creates this automatically)
-  // Try multiple cookie patterns to support both local and production
-  const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
-  
-  // Get all cookies for debugging
-  const allCookies = request.cookies.getAll();
-  
-  // Find Appwrite session cookie with multiple strategies
-  const sessionCookie = 
-    request.cookies.get(`a_session_${projectId}`) ||
-    request.cookies.get(`a_session_${projectId}_legacy`) ||
-    // Fallback: check if ANY Appwrite session cookie exists
-    allCookies.find(cookie => 
-      cookie.name.startsWith('a_session') && cookie.value
-    );
-  
-  const isAuthenticated = !!sessionCookie;
-  
-  // Debug logging (only in development or when needed)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Middleware check:', {
-      pathname,
-      isAuthenticated,
-      cookieName: sessionCookie?.name,
-      hasValue: !!sessionCookie?.value,
-      totalCookies: allCookies.length
-    });
-  }
-
-  // Check route type
-  const isAdminRoute = ADMIN_ROUTES.some(route => pathname.startsWith(route));
-  const isUPTRoute = UPT_ROUTES.some(route => pathname.startsWith(route));
-  const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-  const isProtectedRoute = isAdminRoute || isUPTRoute;
-
-  // CASE 1: Unauthenticated user trying to access protected route
-  if (isProtectedRoute && !isAuthenticated) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // CASE 2: Authenticated user trying to access login page
-  // Check if there's a redirect parameter, use it; otherwise go to home
-  if (isPublicRoute && isAuthenticated) {
-    const redirect = request.nextUrl.searchParams.get('redirect');
-    const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
-    
-    console.log('Redirecting authenticated user:', {
-      from: pathname,
-      to: redirectUrl,
-      hasRedirectParam: !!redirect
-    });
-    
-    return NextResponse.redirect(new URL(redirectUrl, request.url));
-  }
-
-  // CASE 3: For authenticated users on root path, redirect to appropriate dashboard
-  // This will be handled by the home page component based on role
-
-  // Allow the request to continue
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function middleware(_request: NextRequest) {
+  // Simply pass through all requests
+  // Auth protection is handled client-side
   return NextResponse.next();
 }
 

@@ -53,12 +53,18 @@ export default function AdminDashboardPage() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  // Verify admin role
+  // Verify admin role - redirect if not authenticated or not admin
   useEffect(() => {
-    if (!isLoading && role !== 'admin') {
-      router.push('/login');
+    if (!isLoading) {
+      if (!user) {
+        // Not authenticated, redirect to login
+        window.location.href = '/login?redirect=/admin';
+      } else if (role !== 'admin') {
+        // Authenticated but not admin, redirect to home
+        window.location.href = '/';
+      }
     }
-  }, [role, isLoading, router]);
+  }, [user, role, isLoading]);
 
   // Fetch ALL submissions (admin can see everything)
   useEffect(() => {
