@@ -224,6 +224,20 @@ export default function UPTDashboardPage() {
     return counts;
   }, [filteredSubmissions]);
 
+  // Calculate indicator targets from current month/year filter
+  const indicatorTargets = useMemo(() => {
+    const targetsByIndicator: Record<string, number> = {};
+
+    targets.forEach((target) => {
+      if (target.year === selectedYear) {
+        const existingTarget = targetsByIndicator[target.indicator_type] || 0;
+        targetsByIndicator[target.indicator_type] = existingTarget + target.target_value;
+      }
+    });
+
+    return targetsByIndicator;
+  }, [targets, selectedYear]);
+
   // Calculate chart data for Rekap Visualisasi (per indicator)
   const chartDataByIndicator = useMemo(() => {
     const submissionsByIndicator: Record<string, number> = {};
@@ -472,6 +486,53 @@ export default function UPTDashboardPage() {
           </div>
         )}
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* New Submission Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-pln-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Buat Laporan Baru</h3>
+              <p className="text-gray-500 text-sm mb-6">Kirim laporan kinerja indikator baru</p>
+              <Link
+                href="/upt/submit-report"
+                className="inline-flex items-center justify-center gap-2 bg-pln-blue hover:bg-pln-blue-dark text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Buat Laporan
+              </Link>
+            </div>
+          </div>
+
+          {/* View History Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Riwayat Laporan</h3>
+              <p className="text-gray-500 text-sm mb-6">Lihat semua laporan yang sudah dikirim</p>
+              <Link
+                href="/upt/history"
+                className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                Lihat Riwayat
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Stats Card with Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center gap-3 mb-6">
@@ -540,14 +601,30 @@ export default function UPTDashboardPage() {
               </div>
             ) : (
               <>
-                {Object.entries(INDICATOR_TYPE_LABELS).map(([key, label]) => (
-                  <div key={key} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">{label}</span>
-                    <span className="text-lg font-bold text-pln-blue">
-                      {indicatorCounts[key] || 0}
-                    </span>
-                  </div>
-                ))}
+                {Object.entries(INDICATOR_TYPE_LABELS).map(([key, label]) => {
+                  const realisasi = indicatorCounts[key] || 0;
+                  const target = indicatorTargets[key] || 0;
+                  const percentage = target === 0 ? null : Math.round((realisasi / target) * 100);
+                  
+                  return (
+                    <div key={key} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">{label}</span>
+                      {percentage === null ? (
+                        <span className="text-xs text-gray-400 italic">Admin belum set target</span>
+                      ) : (
+                        <span className={`text-lg font-bold ${
+                          percentage >= 81
+                            ? 'text-green-600'
+                            : percentage >= 41
+                            ? 'text-yellow-600'
+                            : 'text-red-600'
+                        }`}>
+                          {percentage}%
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
                 <div className="flex justify-between items-center p-3 bg-pln-blue/10 rounded-lg border border-pln-blue/20">
                   <span className="text-sm font-semibold text-gray-700">Total</span>
                   <span className="text-xl font-bold text-pln-blue">
@@ -708,53 +785,6 @@ export default function UPTDashboardPage() {
             </div>
           </div>
         )}
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* New Submission Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-pln-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Buat Laporan Baru</h3>
-              <p className="text-gray-500 text-sm mb-6">Kirim laporan kinerja indikator baru</p>
-              <Link
-                href="/upt/submit-report"
-                className="inline-flex items-center justify-center gap-2 bg-pln-blue hover:bg-pln-blue-dark text-white px-6 py-3 rounded-lg font-medium transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Buat Laporan
-              </Link>
-            </div>
-          </div>
-
-          {/* View History Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Riwayat Laporan</h3>
-              <p className="text-gray-500 text-sm mb-6">Lihat semua laporan yang sudah dikirim</p>
-              <Link
-                href="/upt/history"
-                className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                Lihat Riwayat
-              </Link>
-            </div>
-          </div>
-        </div>
 
         {/* Welcome Panel */}
         <div className="bg-linear-to-br from-pln-blue to-blue-700 rounded-xl p-8 text-white">

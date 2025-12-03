@@ -107,6 +107,26 @@ export default function SubmitReportPage() {
       return;
     }
 
+    // Validate username fields - should not contain URLs
+    const urlPattern = /https?:\/\//i;
+    const usernameFields = [
+      { value: usernameInstagram1, name: 'Username Instagram 1' },
+      { value: usernameInstagram2, name: 'Username Instagram 2' },
+      { value: usernameTwitter1, name: 'Username Twitter 1' },
+      { value: usernameTwitter2, name: 'Username Twitter 2' },
+      { value: usernameYoutube1, name: 'Username/Channel YouTube 1' },
+      { value: usernameYoutube2, name: 'Username/Channel YouTube 2' },
+      { value: usernameTiktok, name: 'Username TikTok' },
+      { value: usernameFacebook, name: 'Username/Page Facebook' },
+    ];
+
+    for (const field of usernameFields) {
+      if (field.value && urlPattern.test(field.value)) {
+        alert(`❌ ${field.name} tidak boleh mengandung URL (http:// atau https://).\n\nSilakan masukkan username saja.`);
+        return;
+      }
+    }
+
     // Validate based on indicator type
     if (isSkoringMedia) {
       if (!subCategory) {
