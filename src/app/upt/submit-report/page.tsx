@@ -26,6 +26,7 @@ export default function SubmitReportPage() {
   const [title, setTitle] = useState('');
   const [narasi, setNarasi] = useState('');
   const [documentationLink, setDocumentationLink] = useState('');
+  const [linkMedia, setLinkMedia] = useState('');
   
   // Skoring Media state
   const [skorMediaMassa, setSkorMediaMassa] = useState<number | ''>('');
@@ -77,9 +78,14 @@ export default function SubmitReportPage() {
   const isInfluencer = indicatorType === 'INFLUENCER DAN SMR' && subCategory === 'INFLUENCER';
   const isSMR = indicatorType === 'INFLUENCER DAN SMR' && subCategory === 'SMR';
   
-  const showStandardFields = !isSkoringMedia && !isInfluencer && !isSMR; // title, narasi, documentation_link
+  // KONTEN IN-CHANGE and KONTEN WAG use link_media instead of narasi + documentation_link
+  const isKontenInChange = indicatorType === 'KONTEN IN-CHANGE';
+  const isKontenWAG = indicatorType === 'KONTEN WAG';
+  const showLinkMedia = isKontenInChange || isKontenWAG;
+  
+  const showStandardFields = !isSkoringMedia && !isInfluencer && !isSMR && !showLinkMedia;
 
-  // Redirect if not UPT user (useEffect to avoid hook order issues)
+  // Redirect if not UPT user
   if (!isLoading && role !== 'uptuser') {
     router.push('/login');
     return null;
@@ -92,62 +98,70 @@ export default function SubmitReportPage() {
 
     // Validation
     if (!user) {
-      setError('User not authenticated');
+      setError('Pengguna tidak terautentikasi');
       return;
     }
 
     if (!uptName) {
-      setError('UPT name not found in user profile');
+      setError('Nama UPT tidak ditemukan');
       return;
     }
 
     // Validate based on indicator type
     if (isSkoringMedia) {
-      // Validation for Skoring Media
       if (!subCategory) {
-        setError('Please select a sub-category (Media Massa or Media Sosial)');
+        setError('Silakan pilih sub-kategori (Media Massa atau Media Sosial)');
         return;
       }
 
       if (subCategory === 'MEDIA MASSA' && (!skorMediaMassa || skorMediaMassa <= 0)) {
-        setError('Please enter a valid Skor Media Massa (must be greater than 0)');
+        setError('Masukkan nilai Skor Media Massa yang valid (harus lebih dari 0)');
         return;
       }
 
       if (subCategory === 'MEDIA SOSIAL' && (!skorMediaSosial || skorMediaSosial <= 0)) {
-        setError('Please enter a valid Skor Media Sosial (must be greater than 0)');
+        setError('Masukkan nilai Skor Media Sosial yang valid (harus lebih dari 0)');
         return;
       }
     } else if (isInfluencer || isSMR) {
-      // Validation for Influencer/SMR
       if (!nomorKonten || nomorKonten.trim().length === 0) {
-        setError('Please enter Nomor Konten');
+        setError('Silakan masukkan Nomor Konten');
         return;
       }
 
       if (!title || title.trim().length < VALIDATION_RULES.TITLE.MIN_LENGTH) {
-        setError(`Title must be at least ${VALIDATION_RULES.TITLE.MIN_LENGTH} characters`);
+        setError(`Judul minimal ${VALIDATION_RULES.TITLE.MIN_LENGTH} karakter`);
         return;
       }
+       
 
-      // At least one social media link must be filled
       const hasAnySocialMedia = isInfluencer
         ? (linkInstagram1 || linkInstagram2 || linkTwitter1 || linkTwitter2 || linkYoutube1 || linkYoutube2 || linkTiktok)
         : (linkInstagram1 || linkFacebook || linkTwitter1);
 
       if (!hasAnySocialMedia) {
-        setError('Please enter at least one social media link');
+        setError('Silakan isi minimal satu link media sosial');
+        return;
+      }
+    } else if (showLinkMedia) {
+      // Validation for KONTEN IN-CHANGE and KONTEN WAG
+      if (title.length < VALIDATION_RULES.TITLE.MIN_LENGTH) {
+        setError(`Judul minimal ${VALIDATION_RULES.TITLE.MIN_LENGTH} karakter`);
+        return;
+      }
+
+      if (!VALIDATION_RULES.DOCUMENTATION_LINK.PATTERN.test(linkMedia)) {
+        setError('Link Media harus berupa URL yang valid (dimulai dengan http:// atau https://)');
         return;
       }
     } else {
-      // Validation for standard indicators
       if (title.length < VALIDATION_RULES.TITLE.MIN_LENGTH) {
-        setError(`Title must be at least ${VALIDATION_RULES.TITLE.MIN_LENGTH} characters`);
+        setError(`Judul minimal ${VALIDATION_RULES.TITLE.MIN_LENGTH} karakter`);
         return;
       }
 
       if (narasi.length < VALIDATION_RULES.NARASI.MIN_LENGTH) {
-        setError(`Narasi must be at least ${VALIDATION_RULES.NARASI.MIN_LENGTH} characters`);
+        setError(`Narasi minimal ${VALIDATION_RULES.NARASI.MIN_LENGTH} karakter`);
         return;
       }
 
@@ -178,77 +192,72 @@ export default function SubmitReportPage() {
           submissionData.skor_media_sosial = Number(skorMediaSosial);
           submissionData.skor_media_massa = null;
         }
-        // Set optional fields to null for Skoring Media
         submissionData.title = null;
         submissionData.narasi = null;
         submissionData.documentation_link = null;
       } else if (isInfluencer) {
-        // Influencer data
         submissionData.sub_category = 'INFLUENCER';
         submissionData.nomor_konten = nomorKonten.trim();
         submissionData.title = title.trim();
         submissionData.narasi = null;
         submissionData.documentation_link = null;
-        // Instagram (2 fields)
         submissionData.link_instagram_1 = linkInstagram1.trim() || null;
         submissionData.username_instagram_1 = usernameInstagram1.trim() || null;
         submissionData.link_instagram_2 = linkInstagram2.trim() || null;
         submissionData.username_instagram_2 = usernameInstagram2.trim() || null;
-        // Twitter/X (2 fields)
         submissionData.link_twitter_1 = linkTwitter1.trim() || null;
         submissionData.username_twitter_1 = usernameTwitter1.trim() || null;
         submissionData.link_twitter_2 = linkTwitter2.trim() || null;
         submissionData.username_twitter_2 = usernameTwitter2.trim() || null;
-        // YouTube (2 fields)
         submissionData.link_youtube_1 = linkYoutube1.trim() || null;
         submissionData.username_youtube_1 = usernameYoutube1.trim() || null;
         submissionData.link_youtube_2 = linkYoutube2.trim() || null;
         submissionData.username_youtube_2 = usernameYoutube2.trim() || null;
-        // TikTok (1 field)
         submissionData.link_tiktok = linkTiktok.trim() || null;
         submissionData.username_tiktok = usernameTiktok.trim() || null;
-        // Facebook (not used for Influencer)
         submissionData.link_facebook = null;
         submissionData.username_facebook = null;
-        // Skoring media (not used)
         submissionData.skor_media_massa = null;
         submissionData.skor_media_sosial = null;
       } else if (isSMR) {
-        // SMR data
         submissionData.sub_category = 'SMR';
         submissionData.nomor_konten = nomorKonten.trim();
         submissionData.title = title.trim();
         submissionData.narasi = null;
         submissionData.documentation_link = null;
-        // Instagram (1 field)
         submissionData.link_instagram_1 = linkInstagram1.trim() || null;
         submissionData.username_instagram_1 = usernameInstagram1.trim() || null;
         submissionData.link_instagram_2 = null;
         submissionData.username_instagram_2 = null;
-        // Facebook (1 field)
         submissionData.link_facebook = linkFacebook.trim() || null;
         submissionData.username_facebook = usernameFacebook.trim() || null;
-        // Twitter/X (1 field)
         submissionData.link_twitter_1 = linkTwitter1.trim() || null;
         submissionData.username_twitter_1 = usernameTwitter1.trim() || null;
         submissionData.link_twitter_2 = null;
         submissionData.username_twitter_2 = null;
-        // YouTube & TikTok (not used for SMR)
         submissionData.link_youtube_1 = null;
         submissionData.username_youtube_1 = null;
         submissionData.link_youtube_2 = null;
         submissionData.username_youtube_2 = null;
         submissionData.link_tiktok = null;
         submissionData.username_tiktok = null;
-        // Skoring media (not used)
+        submissionData.skor_media_massa = null;
+        submissionData.skor_media_sosial = null;
+      } else if (showLinkMedia) {
+        // KONTEN IN-CHANGE and KONTEN WAG fields
+        submissionData.sub_category = null;
+        submissionData.title = title.trim();
+        submissionData.narasi = null;
+        submissionData.documentation_link = null;
+        submissionData.link_media = linkMedia.trim();
         submissionData.skor_media_massa = null;
         submissionData.skor_media_sosial = null;
       } else {
-        // Standard indicator
         submissionData.sub_category = showSubCategory && subCategory ? subCategory : null;
         submissionData.title = title.trim();
         submissionData.narasi = narasi.trim();
         submissionData.documentation_link = documentationLink.trim();
+        submissionData.link_media = null;
         submissionData.skor_media_massa = null;
         submissionData.skor_media_sosial = null;
       }
@@ -271,6 +280,7 @@ export default function SubmitReportPage() {
       setTitle('');
       setNarasi('');
       setDocumentationLink('');
+      setLinkMedia('');
       setSkorMediaMassa('');
       setSkorMediaSosial('');
       setNomorKonten('');
@@ -298,7 +308,7 @@ export default function SubmitReportPage() {
 
     } catch (err) {
       console.error('Submission error:', err);
-      setError('Failed to submit report. Please try again.');
+      setError('Gagal mengirim laporan. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -306,112 +316,108 @@ export default function SubmitReportPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-neon-green border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-neon-green font-mono">LOADING SUBMISSION INTERFACE...</p>
+          <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-gray-600">Memuat formulir...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="bg-cyber-light border-2 border-neon-green rounded-lg p-4 mb-6 shadow-glow-green-sm">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-neon-green rounded-lg flex items-center justify-center shadow-glow-green">
-                <span className="text-cyber-dark font-mono font-bold text-xl">➕</span>
-              </div>
+              <Link
+                href="/upt"
+                className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
               <div>
-                <h1 className="text-neon-green text-3xl font-mono font-bold tracking-wider">
-                  NEW SUBMISSION
-                </h1>
-                <p className="text-cyber-text-dim font-mono text-sm">
-                  {uptName ? uptName.toUpperCase() : 'UPT USER'} {'//'} CREATE REPORT
-                </p>
+                <h1 className="text-xl font-bold text-gray-900">Buat Laporan Baru</h1>
+                <p className="text-sm text-gray-500">{uptName}</p>
               </div>
             </div>
-            
-            <Link
-              href="/upt"
-              className="bg-cyber-dark border-2 border-neon-green text-neon-green px-4 py-2 rounded font-mono
-                         hover:bg-neon-green hover:text-cyber-dark hover:shadow-glow-green-sm
-                         transition-all duration-300"
-            >
-              BACK
-            </Link>
           </div>
         </div>
+      </header>
 
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Success Message */}
         {success && (
-          <div className="bg-cyber-darker border-2 border-neon-green rounded-lg p-6 mb-6 shadow-glow-green">
-            <div className="text-center">
-              <div className="flex w-16 h-16 bg-neon-green rounded-full items-center justify-center mb-4 shadow-glow-green">
-                <span className="text-cyber-dark text-3xl">✓</span>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6 animate-slideDown">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <h3 className="text-neon-green text-xl font-mono font-bold mb-2">
-                SUBMISSION SUCCESSFUL
-              </h3>
-              <p className="text-cyber-text font-mono text-sm">
-                {'>'} Report has been saved to the database
-              </p>
-              <p className="text-cyber-text-dim font-mono text-sm mt-1">
-                {'>'} Redirecting to dashboard...
-              </p>
+              <div>
+                <h3 className="text-lg font-semibold text-green-800">
+                  Laporan Berhasil Dikirim!
+                </h3>
+                <p className="text-green-600">
+                  Data laporan telah tersimpan. Mengalihkan ke dashboard...
+                </p>
+              </div>
             </div>
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 bg-red-950/50 border-2 border-red-500 rounded-lg p-4 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-            <p className="text-red-400 font-mono text-sm flex items-center gap-2">
-              <span className="text-red-500 text-xl">⚠</span>
-              {error}
-            </p>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 animate-slideDown">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-red-700">{error}</p>
+            </div>
           </div>
         )}
 
         {/* Form Card */}
-        <div className="bg-cyber-darker border-2 border-neon-green rounded-lg p-8 shadow-glow-green-sm">
-          {/* Terminal Header */}
-          <div className="mb-6 border-l-2 border-neon-green pl-3">
-            <p className="text-cyber-text-dim font-mono text-xs">
-              <span className="text-neon-green">{'>'}</span> INITIALIZING SUBMISSION PROTOCOL...
-            </p>
-            <p className="text-cyber-text-dim font-mono text-xs">
-              <span className="text-neon-green">{'>'}</span> REPORTER: {uptName}
-            </p>
-            <p className="text-cyber-text-dim font-mono text-xs">
-              <span className="text-neon-green">{'>'}</span> ENTER PERFORMANCE DATA BELOW
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Form Header */}
+          <div className="bg-pln-blue px-6 py-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Formulir Laporan Kinerja
+            </h2>
+            <p className="text-blue-100 text-sm mt-1">
+              Isi formulir di bawah ini dengan lengkap dan benar
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Form Content */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Indicator Type */}
             <div>
-              <label htmlFor="indicator_type" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                {'>'} INDICATOR_TYPE: <span className="text-red-400">*</span>
+              <label htmlFor="indicator_type" className="block text-sm font-semibold text-gray-700 mb-2">
+                Jenis Indikator <span className="text-red-500">*</span>
               </label>
               <select
                 id="indicator_type"
                 value={indicatorType}
                 onChange={(e) => {
                   setIndicatorType(e.target.value as IndicatorType);
-                  setSubCategory(''); // Reset sub-category when indicator changes
+                  setSubCategory('');
                 }}
                 required
                 disabled={isSubmitting}
-                className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                          focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                          transition-all duration-300"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">-- SELECT INDICATOR --</option>
+                <option value="">— Pilih Jenis Indikator —</option>
                 {INDICATOR_TYPES.map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -420,11 +426,11 @@ export default function SubmitReportPage() {
               </select>
             </div>
 
-            {/* Sub-Category (Conditional for INFLUENCER DAN SMR) */}
+            {/* Sub-Category (for INFLUENCER DAN SMR) */}
             {showSubCategory && (
-              <div className="animate-[slideDown_0.3s_ease-out]">
-                <label htmlFor="sub_category" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} SUB_CATEGORY: <span className="text-red-400">*</span>
+              <div className="animate-slideDown">
+                <label htmlFor="sub_category" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Sub-Kategori <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="sub_category"
@@ -432,63 +438,56 @@ export default function SubmitReportPage() {
                   onChange={(e) => setSubCategory(e.target.value as SubCategory)}
                   required={showSubCategory}
                   disabled={isSubmitting}
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">-- SELECT SUB-CATEGORY --</option>
+                  <option value="">— Pilih Sub-Kategori —</option>
                   {SUB_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
                   ))}
                 </select>
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Required for INFLUENCER DAN SMR indicator
+                <p className="text-xs text-gray-500 mt-1">
+                  Diperlukan untuk indikator INFLUENCER DAN SMR
                 </p>
               </div>
             )}
 
-            {/* Sub-Category (Conditional for SKORING MEDIA) */}
+            {/* Sub-Category (for SKORING MEDIA) */}
             {showSkoringMediaSubCategory && (
-              <div className="animate-[slideDown_0.3s_ease-out]">
-                <label htmlFor="sub_category_skoring" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} SUB_CATEGORY: <span className="text-red-400">*</span>
+              <div className="animate-slideDown">
+                <label htmlFor="sub_category_skoring" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Sub-Kategori <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="sub_category_skoring"
                   value={subCategory}
                   onChange={(e) => {
                     setSubCategory(e.target.value as SkoringMediaSubCategory);
-                    // Reset skor fields when sub-category changes
                     setSkorMediaMassa('');
                     setSkorMediaSosial('');
                   }}
                   required={showSkoringMediaSubCategory}
                   disabled={isSubmitting}
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">-- SELECT SUB-CATEGORY --</option>
+                  <option value="">— Pilih Sub-Kategori —</option>
                   {SKORING_MEDIA_SUB_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
                   ))}
                 </select>
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Required for SKORING MEDIA MASSA DAN MEDIA SOSIAL indicator
+                <p className="text-xs text-gray-500 mt-1">
+                  Diperlukan untuk indikator SKORING MEDIA MASSA DAN MEDIA SOSIAL
                 </p>
               </div>
             )}
 
             {/* Submission Date */}
             <div>
-              <label htmlFor="submission_date" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                {'>'} SUBMISSION_DATE: <span className="text-red-400">*</span>
+              <label htmlFor="submission_date" className="block text-sm font-semibold text-gray-700 mb-2">
+                Tanggal Laporan <span className="text-red-500">*</span>
               </label>
               <input
                 id="submission_date"
@@ -497,18 +496,15 @@ export default function SubmitReportPage() {
                 onChange={(e) => setSubmissionDate(e.target.value)}
                 required
                 disabled={isSubmitting}
-                className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                          focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                          transition-all duration-300"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
             {/* Nomor Konten (for Influencer/SMR) */}
             {(isInfluencer || isSMR) && (
-              <div className="animate-[slideDown_0.3s_ease-out]">
-                <label htmlFor="nomor_konten" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} NOMOR_KONTEN: <span className="text-red-400">*</span>
+              <div className="animate-slideDown">
+                <label htmlFor="nomor_konten" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Nomor Konten <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="nomor_konten"
@@ -518,23 +514,19 @@ export default function SubmitReportPage() {
                   required={isInfluencer || isSMR}
                   disabled={isSubmitting}
                   placeholder="Contoh: INF-001 atau SMR-001"
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300
-                            placeholder:text-cyber-text-dim placeholder:italic"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Masukkan nomor konten unik
+                <p className="text-xs text-gray-500 mt-1">
+                  Masukkan nomor konten unik
                 </p>
               </div>
             )}
 
             {/* Judul (for Influencer/SMR) */}
             {(isInfluencer || isSMR) && (
-              <div className="animate-[slideDown_0.3s_ease-out]">
-                <label htmlFor="title_influencer" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} JUDUL: <span className="text-red-400">*</span>
+              <div className="animate-slideDown">
+                <label htmlFor="title_influencer" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Judul <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="title_influencer"
@@ -546,446 +538,336 @@ export default function SubmitReportPage() {
                   maxLength={VALIDATION_RULES.TITLE.MAX_LENGTH}
                   disabled={isSubmitting}
                   placeholder="Silahkan tulis judul konten..."
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300
-                            placeholder:text-cyber-text-dim placeholder:italic"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Min: {VALIDATION_RULES.TITLE.MIN_LENGTH} chars | Current: {title.length}
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimal {VALIDATION_RULES.TITLE.MIN_LENGTH} karakter | Saat ini: {title.length}
                 </p>
               </div>
             )}
 
             {/* INFLUENCER FIELDS */}
             {isInfluencer && (
-              <div className="animate-[slideDown_0.3s_ease-out] space-y-6">
-                {/* Instagram Section (2 fields) */}
-                <div className="border-2 border-neon-blue/30 rounded-lg p-4 bg-cyber-light/20">
-                  <h4 className="text-neon-blue font-mono font-bold mb-4 flex items-center gap-2">
-                    <span>📸</span> INSTAGRAM (Max 2 Accounts)
+              <div className="animate-slideDown space-y-4">
+                {/* Instagram Section */}
+                <div className="bg-linear-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-xl p-4">
+                  <h4 className="text-pink-700 font-semibold mb-4 flex items-center gap-2">
+                    📸 Instagram (Maksimal 2 Akun)
                   </h4>
                   
-                  {/* Instagram 1 */}
-                  <div className="space-y-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label htmlFor="link_instagram_1" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link Instagram 1:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link Instagram 1</label>
                       <input
-                        id="link_instagram_1"
                         type="url"
                         value={linkInstagram1}
                         onChange={(e) => setLinkInstagram1(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="https://www.instagram.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_instagram_1" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username Instagram 1:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Username 1</label>
                       <input
-                        id="username_instagram_1"
                         type="text"
                         value={usernameInstagram1}
                         onChange={(e) => setUsernameInstagram1(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-
-                  {/* Instagram 2 */}
-                  <div className="space-y-4 pt-4 border-t border-cyber-light/30">
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-pink-200">
                     <div>
-                      <label htmlFor="link_instagram_2" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link Instagram 2:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link Instagram 2</label>
                       <input
-                        id="link_instagram_2"
                         type="url"
                         value={linkInstagram2}
                         onChange={(e) => setLinkInstagram2(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="https://www.instagram.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_instagram_2" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username Instagram 2:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Username 2</label>
                       <input
-                        id="username_instagram_2"
                         type="text"
                         value={usernameInstagram2}
                         onChange={(e) => setUsernameInstagram2(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Twitter/X Section (2 fields) */}
-                <div className="border-2 border-neon-blue/30 rounded-lg p-4 bg-cyber-light/20">
-                  <h4 className="text-neon-blue font-mono font-bold mb-4 flex items-center gap-2">
-                    <span>𝕏</span> TWITTER/X (Max 2 Accounts)
+                {/* Twitter/X Section */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <h4 className="text-blue-700 font-semibold mb-4 flex items-center gap-2">
+                    𝕏 Twitter/X (Maksimal 2 Akun)
                   </h4>
                   
-                  {/* Twitter 1 */}
-                  <div className="space-y-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label htmlFor="link_twitter_1" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link Twitter/X 1:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link Twitter 1</label>
                       <input
-                        id="link_twitter_1"
                         type="url"
                         value={linkTwitter1}
                         onChange={(e) => setLinkTwitter1(e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="https://twitter.com/... or https://x.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        placeholder="https://twitter.com/..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_twitter_1" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username Twitter/X 1:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Username 1</label>
                       <input
-                        id="username_twitter_1"
                         type="text"
                         value={usernameTwitter1}
                         onChange={(e) => setUsernameTwitter1(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-
-                  {/* Twitter 2 */}
-                  <div className="space-y-4 pt-4 border-t border-cyber-light/30">
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-blue-200">
                     <div>
-                      <label htmlFor="link_twitter_2" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link Twitter/X 2:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link Twitter 2</label>
                       <input
-                        id="link_twitter_2"
                         type="url"
                         value={linkTwitter2}
                         onChange={(e) => setLinkTwitter2(e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="https://twitter.com/... or https://x.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        placeholder="https://twitter.com/..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_twitter_2" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username Twitter/X 2:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Username 2</label>
                       <input
-                        id="username_twitter_2"
                         type="text"
                         value={usernameTwitter2}
                         onChange={(e) => setUsernameTwitter2(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* YouTube Section (2 fields) */}
-                <div className="border-2 border-neon-blue/30 rounded-lg p-4 bg-cyber-light/20">
-                  <h4 className="text-neon-blue font-mono font-bold mb-4 flex items-center gap-2">
-                    <span>▶️</span> YOUTUBE (Max 2 Channels)
+                {/* YouTube Section */}
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <h4 className="text-red-700 font-semibold mb-4 flex items-center gap-2">
+                    ▶️ YouTube (Maksimal 2 Channel)
                   </h4>
                   
-                  {/* YouTube 1 */}
-                  <div className="space-y-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label htmlFor="link_youtube_1" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link YouTube 1:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link YouTube 1</label>
                       <input
-                        id="link_youtube_1"
                         type="url"
                         value={linkYoutube1}
                         onChange={(e) => setLinkYoutube1(e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="https://www.youtube.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        placeholder="https://youtube.com/..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_youtube_1" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username/Channel YouTube 1:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Channel 1</label>
                       <input
-                        id="username_youtube_1"
                         type="text"
                         value={usernameYoutube1}
                         onChange={(e) => setUsernameYoutube1(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@channelname"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-
-                  {/* YouTube 2 */}
-                  <div className="space-y-4 pt-4 border-t border-cyber-light/30">
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-red-200">
                     <div>
-                      <label htmlFor="link_youtube_2" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link YouTube 2:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link YouTube 2</label>
                       <input
-                        id="link_youtube_2"
                         type="url"
                         value={linkYoutube2}
                         onChange={(e) => setLinkYoutube2(e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="https://www.youtube.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        placeholder="https://youtube.com/..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_youtube_2" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username/Channel YouTube 2:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Channel 2</label>
                       <input
-                        id="username_youtube_2"
                         type="text"
                         value={usernameYoutube2}
                         onChange={(e) => setUsernameYoutube2(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@channelname"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* TikTok Section (1 field) */}
-                <div className="border-2 border-neon-blue/30 rounded-lg p-4 bg-cyber-light/20">
-                  <h4 className="text-neon-blue font-mono font-bold mb-4 flex items-center gap-2">
-                    <span>🎵</span> TIKTOK
+                {/* TikTok Section */}
+                <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+                  <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                    🎵 TikTok
                   </h4>
                   
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="link_tiktok" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link TikTok:
-                      </label>
+                      <label className="block text-sm text-gray-300 mb-1">Link TikTok</label>
                       <input
-                        id="link_tiktok"
                         type="url"
                         value={linkTiktok}
                         onChange={(e) => setLinkTiktok(e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="https://www.tiktok.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        placeholder="https://tiktok.com/..."
+                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_tiktok" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username TikTok:
-                      </label>
+                      <label className="block text-sm text-gray-300 mb-1">Username</label>
                       <input
-                        id="username_tiktok"
                         type="text"
                         value={usernameTiktok}
                         onChange={(e) => setUsernameTiktok(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-blue focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
-                <p className="text-cyber-text-dim font-mono text-xs text-center">
-                  {'>'} Minimal isi 1 social media platform
+                <p className="text-sm text-gray-500 text-center">
+                  💡 Minimal isi 1 platform media sosial
                 </p>
               </div>
             )}
 
             {/* SMR FIELDS */}
             {isSMR && (
-              <div className="animate-[slideDown_0.3s_ease-out] space-y-6">
-                {/* Instagram Section (1 field) */}
-                <div className="border-2 border-neon-purple/30 rounded-lg p-4 bg-cyber-light/20">
-                  <h4 className="text-neon-purple font-mono font-bold mb-4 flex items-center gap-2">
-                    <span>📸</span> INSTAGRAM
+              <div className="animate-slideDown space-y-4">
+                {/* Instagram Section */}
+                <div className="bg-linear-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-xl p-4">
+                  <h4 className="text-pink-700 font-semibold mb-4 flex items-center gap-2">
+                    📸 Instagram
                   </h4>
                   
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="link_instagram_smr" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link Instagram:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link Instagram</label>
                       <input
-                        id="link_instagram_smr"
                         type="url"
                         value={linkInstagram1}
                         onChange={(e) => setLinkInstagram1(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="https://www.instagram.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-purple focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_instagram_smr" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username Instagram:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Username</label>
                       <input
-                        id="username_instagram_smr"
                         type="text"
                         value={usernameInstagram1}
                         onChange={(e) => setUsernameInstagram1(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-purple focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Facebook Section (1 field) */}
-                <div className="border-2 border-neon-purple/30 rounded-lg p-4 bg-cyber-light/20">
-                  <h4 className="text-neon-purple font-mono font-bold mb-4 flex items-center gap-2">
-                    <span>👥</span> FACEBOOK
+                {/* Facebook Section */}
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <h4 className="text-blue-700 font-semibold mb-4 flex items-center gap-2">
+                    👥 Facebook
                   </h4>
                   
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="link_facebook" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link Facebook:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link Facebook</label>
                       <input
-                        id="link_facebook"
                         type="url"
                         value={linkFacebook}
                         onChange={(e) => setLinkFacebook(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="https://www.facebook.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-purple focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_facebook" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username Facebook:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Username / Page</label>
                       <input
-                        id="username_facebook"
                         type="text"
                         value={usernameFacebook}
                         onChange={(e) => setUsernameFacebook(e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="username atau page name"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-purple focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        placeholder="Username atau nama page"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Twitter Section (1 field) */}
-                <div className="border-2 border-neon-purple/30 rounded-lg p-4 bg-cyber-light/20">
-                  <h4 className="text-neon-purple font-mono font-bold mb-4 flex items-center gap-2">
-                    <span>𝕏</span> TWITTER/X
+                {/* Twitter Section */}
+                <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
+                  <h4 className="text-sky-700 font-semibold mb-4 flex items-center gap-2">
+                    𝕏 Twitter/X
                   </h4>
                   
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="link_twitter_smr" className="block text-cyber-text font-mono text-sm mb-1">
-                        Link Twitter/X:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Link Twitter</label>
                       <input
-                        id="link_twitter_smr"
                         type="url"
                         value={linkTwitter1}
                         onChange={(e) => setLinkTwitter1(e.target.value)}
                         disabled={isSubmitting}
-                        placeholder="https://twitter.com/... or https://x.com/..."
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-purple focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        placeholder="https://twitter.com/..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="username_twitter_smr" className="block text-cyber-text font-mono text-sm mb-1">
-                        Username Twitter/X:
-                      </label>
+                      <label className="block text-sm text-gray-600 mb-1">Username</label>
                       <input
-                        id="username_twitter_smr"
                         type="text"
                         value={usernameTwitter1}
                         onChange={(e) => setUsernameTwitter1(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
-                        className="w-full bg-cyber-dark border border-cyber-light text-cyber-text font-mono px-3 py-2 rounded text-sm
-                                  focus:border-neon-purple focus:outline-none
-                                  placeholder:text-cyber-text-dim placeholder:italic"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                       />
                     </div>
                   </div>
                 </div>
 
-                <p className="text-cyber-text-dim font-mono text-xs text-center">
-                  {'>'} Minimal isi 1 social media platform
+                <p className="text-sm text-gray-500 text-center">
+                  💡 Minimal isi 1 platform media sosial
                 </p>
               </div>
             )}
 
-            {/* Skor Media Massa (Conditional for SKORING MEDIA - MEDIA MASSA) */}
+            {/* Skor Media Massa */}
             {showSkorMediaMassa && (
-              <div className="animate-[slideDown_0.3s_ease-out]">
-                <label htmlFor="skor_media_massa" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} SKOR_MEDIA_MASSA: <span className="text-red-400">*</span>
+              <div className="animate-slideDown">
+                <label htmlFor="skor_media_massa" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Skor Media Massa <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="skor_media_massa"
@@ -997,23 +879,19 @@ export default function SubmitReportPage() {
                   step="0.01"
                   disabled={isSubmitting}
                   placeholder="Contoh: 570000"
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300
-                            placeholder:text-cyber-text-dim placeholder:italic"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Masukkan nilai skor media massa (contoh: 570000)
+                <p className="text-xs text-gray-500 mt-1">
+                  Masukkan nilai skor media massa (contoh: 570000)
                 </p>
               </div>
             )}
 
-            {/* Skor Media Sosial (Conditional for SKORING MEDIA - MEDIA SOSIAL) */}
+            {/* Skor Media Sosial */}
             {showSkorMediaSosial && (
-              <div className="animate-[slideDown_0.3s_ease-out]">
-                <label htmlFor="skor_media_sosial" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} SKOR_MEDIA_SOSIAL: <span className="text-red-400">*</span>
+              <div className="animate-slideDown">
+                <label htmlFor="skor_media_sosial" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Skor Media Sosial <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="skor_media_sosial"
@@ -1025,23 +903,72 @@ export default function SubmitReportPage() {
                   step="0.01"
                   disabled={isSubmitting}
                   placeholder="Contoh: 5000"
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300
-                            placeholder:text-cyber-text-dim placeholder:italic"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Masukkan nilai skor media sosial (contoh: 5000)
+                <p className="text-xs text-gray-500 mt-1">
+                  Masukkan nilai skor media sosial (contoh: 5000)
                 </p>
               </div>
             )}
 
-            {/* Title (Only for standard indicators) */}
+            {/* KONTEN IN-CHANGE & KONTEN WAG Fields: Title */}
+            {showLinkMedia && (
+              <div className="animate-slideDown">
+                <label htmlFor="title_link_media" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Judul <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="title_link_media"
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required={showLinkMedia}
+                  minLength={VALIDATION_RULES.TITLE.MIN_LENGTH}
+                  maxLength={VALIDATION_RULES.TITLE.MAX_LENGTH}
+                  disabled={isSubmitting}
+                  placeholder="Silahkan tulis judul..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimal {VALIDATION_RULES.TITLE.MIN_LENGTH} karakter | Saat ini: {title.length}
+                </p>
+              </div>
+            )}
+
+            {/* KONTEN IN-CHANGE & KONTEN WAG Fields: Link Media */}
+            {showLinkMedia && (
+              <div className="animate-slideDown">
+                <label htmlFor="link_media" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Link Media <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </span>
+                  <input
+                    id="link_media"
+                    type="url"
+                    value={linkMedia}
+                    onChange={(e) => setLinkMedia(e.target.value)}
+                    required={showLinkMedia}
+                    disabled={isSubmitting}
+                    placeholder="https://drive.google.com/... atau https://youtube.com/..."
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Link media sosial atau dokumentasi (harus dimulai dengan http:// atau https://)
+                </p>
+              </div>
+            )}
+
+            {/* Standard Fields: Title */}
             {showStandardFields && (
               <div>
-                <label htmlFor="title" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} TITLE: <span className="text-red-400">*</span>
+                <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Judul <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="title"
@@ -1053,23 +980,19 @@ export default function SubmitReportPage() {
                   maxLength={VALIDATION_RULES.TITLE.MAX_LENGTH}
                   disabled={isSubmitting}
                   placeholder="Silahkan tulis judul..."
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300
-                            placeholder:text-cyber-text-dim placeholder:italic"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Min: {VALIDATION_RULES.TITLE.MIN_LENGTH} chars | Current: {title.length}
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimal {VALIDATION_RULES.TITLE.MIN_LENGTH} karakter | Saat ini: {title.length}
                 </p>
               </div>
             )}
 
-            {/* Narasi (Only for standard indicators) */}
+            {/* Standard Fields: Narasi */}
             {showStandardFields && (
               <div>
-                <label htmlFor="narasi" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} NARASI: <span className="text-red-400">*</span>
+                <label htmlFor="narasi" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Narasi <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   id="narasi"
@@ -1081,82 +1004,85 @@ export default function SubmitReportPage() {
                   disabled={isSubmitting}
                   rows={6}
                   placeholder="Silahkan tulis detail deskripsi narasi..."
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300 resize-y
-                            placeholder:text-cyber-text-dim placeholder:italic"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed resize-y"
                 />
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Min: {VALIDATION_RULES.NARASI.MIN_LENGTH} chars | Current: {narasi.length}
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimal {VALIDATION_RULES.NARASI.MIN_LENGTH} karakter | Saat ini: {narasi.length}
                 </p>
               </div>
             )}
 
-            {/* Documentation Link (Only for standard indicators) */}
+            {/* Standard Fields: Documentation Link */}
             {showStandardFields && (
               <div>
-                <label htmlFor="documentation_link" className="block text-neon-green font-mono text-sm mb-2 tracking-wide">
-                  {'>'} DOCUMENTATION_LINK: <span className="text-red-400">*</span>
+                <label htmlFor="documentation_link" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Link Dokumentasi <span className="text-red-500">*</span>
                 </label>
-                <input
-                  id="documentation_link"
-                  type="url"
-                  value={documentationLink}
-                  onChange={(e) => setDocumentationLink(e.target.value)}
-                  required={showStandardFields}
-                  disabled={isSubmitting}
-                  placeholder="https://drive.google.com/..."
-                  className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                            focus:border-neon-green focus:shadow-glow-green-sm focus:outline-none
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all duration-300
-                            placeholder:text-cyber-text-dim placeholder:italic"
-                />
-                <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                  {'>'} Must start with http:// or https://
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </span>
+                  <input
+                    id="documentation_link"
+                    type="url"
+                    value={documentationLink}
+                    onChange={(e) => setDocumentationLink(e.target.value)}
+                    required={showStandardFields}
+                    disabled={isSubmitting}
+                    placeholder="https://drive.google.com/..."
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Link harus dimulai dengan http:// atau https://
                 </p>
               </div>
             )}
 
             {/* Submit Button */}
-            <div className="pt-4 border-t border-cyber-light">
+            <div className="pt-6 border-t border-gray-200">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-neon-green text-cyber-dark font-mono font-bold py-4 px-6 rounded
-                           shadow-glow-green hover:bg-neon-blue hover:shadow-glow-blue
-                           disabled:bg-cyber-light disabled:text-cyber-text-dim disabled:shadow-none
-                           transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]
-                           disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full bg-pln-blue hover:bg-pln-blue-dark text-white font-semibold py-4 px-6 rounded-xl
+                           transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.99]
+                           disabled:bg-gray-300 disabled:cursor-not-allowed disabled:transform-none
+                           flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="inline-block w-5 h-5 border-2 border-cyber-dark border-t-transparent rounded-full animate-spin" />
-                    TRANSMITTING DATA...
-                  </span>
+                  <>
+                    <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Mengirim Laporan...
+                  </>
                 ) : (
-                  '[ SUBMIT REPORT ]'
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    Kirim Laporan
+                  </>
                 )}
               </button>
             </div>
-          </form>
 
-          {/* Footer Info */}
-          <div className="mt-6 pt-6 border-t border-cyber-light">
-            <p className="text-cyber-text-dim font-mono text-xs text-center">
-              <span className="text-neon-green">⬡</span> All fields marked with <span className="text-red-400">*</span> are required
-            </p>
-          </div>
+            {/* Footer Info */}
+            <div className="text-center">
+              <p className="text-xs text-gray-500">
+                Kolom dengan tanda <span className="text-red-500">*</span> wajib diisi
+              </p>
+            </div>
+          </form>
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-cyber-text-dim font-mono text-xs">
-            <span className="text-neon-green">⬡</span> UPT REPORTING SYSTEM v1.0 Build with 🔥 by Ragel Listiyono
+        <div className="mt-8 text-center">
+          <p className="text-sm text-gray-400">
+            Sistem Pelaporan Kinerja UPT — PLN Indonesia
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

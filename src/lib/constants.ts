@@ -27,6 +27,25 @@ export const INDICATOR_TYPE_LABELS: Record<string, string> = {
 };
 
 // ============================================================================
+// Month Constants
+// ============================================================================
+
+export const MONTHS = [
+  { value: 1, label: 'Januari' },
+  { value: 2, label: 'Februari' },
+  { value: 3, label: 'Maret' },
+  { value: 4, label: 'April' },
+  { value: 5, label: 'Mei' },
+  { value: 6, label: 'Juni' },
+  { value: 7, label: 'Juli' },
+  { value: 8, label: 'Agustus' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'Oktober' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'Desember' }
+] as const;
+
+// ============================================================================
 // Sub-Categories (for INFLUENCER DAN SMR)
 // ============================================================================
 
@@ -67,6 +86,22 @@ export const UPT_NAMES = [
   'UPT Gresik'
 ] as const;
 
+// UPT_LIST alias for compatibility
+export const UPT_LIST = UPT_NAMES;
+
+// ============================================================================
+// Indicator Categories (for dropdown selection)
+// ============================================================================
+
+export const INDICATOR_CATEGORIES = [
+  { value: 'PUBLIKASI SIARAN PERS', label: 'Publikasi Siaran Pers' },
+  { value: 'PRODUKSI KONTEN', label: 'Produksi Konten' },
+  { value: 'INFLUENCER DAN SMR', label: 'Influencer dan SMR' },
+  { value: 'KONTEN IN-CHANGE', label: 'Konten In-Change' },
+  { value: 'KONTEN WAG', label: 'Konten WAG' },
+  { value: 'SKORING MEDIA MASSA DAN MEDIA SOSIAL', label: 'Skoring Media Massa dan Media Sosial' }
+] as const;
+
 // ============================================================================
 // User Roles
 // ============================================================================
@@ -91,7 +126,8 @@ export const APPWRITE_CONFIG = {
     SUBMISSIONS: 'submissions',
     INSTRUCTIONS: 'instructions',
     INSTRUCTION_READS: 'instruction_reads',
-    TARGETS: 'targets'
+    TARGETS: 'targets',
+    PERFORMANCE_TARGETS: 'performance_targets'
   }
 } as const;
 

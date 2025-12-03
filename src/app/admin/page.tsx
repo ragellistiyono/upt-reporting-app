@@ -7,6 +7,7 @@ import { databases } from '@/lib/appwrite';
 import { APPWRITE_CONFIG, INDICATOR_TYPES, UPT_NAMES, INDICATOR_TYPE_LABELS, SUB_CATEGORY_LABELS } from '@/lib/constants';
 import { Query } from 'appwrite';
 import type { Submission, Instruction, Target } from '@/types';
+import Image from 'next/image';
 import {
   useReactTable,
   getCoreRowModel,
@@ -66,7 +67,7 @@ export default function AdminDashboardPage() {
         const response = await databases.listDocuments(
           APPWRITE_CONFIG.DATABASE_ID,
           APPWRITE_CONFIG.COLLECTIONS.SUBMISSIONS,
-          [Query.orderDesc('$createdAt'), Query.limit(1000)] // Fetch up to 1000 submissions
+          [Query.orderDesc('$createdAt'), Query.limit(1000)]
         );
 
         setSubmissions(response.documents as unknown as Submission[]);
@@ -220,17 +221,14 @@ export default function AdminDashboardPage() {
   const filteredData = useMemo(() => {
     let filtered = submissions;
 
-    // UPT filter
     if (uptFilter !== 'all') {
       filtered = filtered.filter((sub) => sub.submitted_by_upt === uptFilter);
     }
 
-    // Indicator filter
     if (indicatorFilter !== 'all') {
       filtered = filtered.filter((sub) => sub.indicator_type === indicatorFilter);
     }
 
-    // Date range filter
     if (dateFrom) {
       filtered = filtered.filter((sub) => {
         const subDate = new Date(sub.submission_date);
@@ -250,26 +248,22 @@ export default function AdminDashboardPage() {
 
   // Calculate chart data for visualization
   const chartData = useMemo(() => {
-    // Group filtered submissions by UPT
     const submissionsByUPT: Record<string, number> = {};
     filteredData.forEach((sub) => {
       const uptName = sub.submitted_by_upt;
       submissionsByUPT[uptName] = (submissionsByUPT[uptName] || 0) + 1;
     });
 
-    // Get targets for the selected indicator (or all if 'all')
     const targetsByUPT: Record<string, number> = {};
     targets.forEach((target) => {
-      // If indicator filter is set, only show targets for that indicator
       if (indicatorFilter === 'all' || target.indicator_type === indicatorFilter) {
         const existingTarget = targetsByUPT[target.upt_name] || 0;
         targetsByUPT[target.upt_name] = existingTarget + target.target_value;
       }
     });
 
-    // Build chart data for all UPTs
     return UPT_NAMES.map((uptName) => ({
-      name: uptName.replace('UPT ', ''), // Shorter name for chart
+      name: uptName.replace('UPT ', ''),
       realisasi: submissionsByUPT[uptName] || 0,
       target: targetsByUPT[uptName] || 0,
     }));
@@ -313,7 +307,7 @@ export default function AdminDashboardPage() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('submission_date', {
-        header: 'DATE',
+        header: 'Tanggal',
         cell: (info) => {
           const date = new Date(info.getValue());
           return date.toLocaleDateString('id-ID', {
@@ -328,18 +322,18 @@ export default function AdminDashboardPage() {
         cell: (info) => info.getValue(),
       }),
       columnHelper.accessor('indicator_type', {
-        header: 'INDICATOR',
+        header: 'Indikator',
         cell: (info) => INDICATOR_TYPE_LABELS[info.getValue()] || info.getValue(),
       }),
       columnHelper.accessor('sub_category', {
-        header: 'SUB-CATEGORY',
+        header: 'Sub-Kategori',
         cell: (info) => {
           const value = info.getValue();
           return value ? SUB_CATEGORY_LABELS[value] || value : '—';
         },
       }),
       columnHelper.accessor('title', {
-        header: 'TITLE',
+        header: 'Judul',
         cell: (info) => (
           <div className="max-w-md truncate" title={info.getValue()}>
             {info.getValue()}
@@ -347,7 +341,7 @@ export default function AdminDashboardPage() {
         ),
       }),
       columnHelper.accessor('documentation_link', {
-        header: 'DOCUMENTATION',
+        header: 'Dokumentasi',
         cell: (info) => {
           const link = info.getValue();
           return link ? (
@@ -355,12 +349,12 @@ export default function AdminDashboardPage() {
               href={link}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-neon-blue hover:text-neon-pink transition-colors underline"
+              className="text-pln-blue hover:text-pln-blue-dark transition-colors underline"
             >
-              View
+              Lihat
             </a>
           ) : (
-            <span className="text-cyber-text-dim">—</span>
+            <span className="text-gray-400">—</span>
           );
         },
       }),
@@ -386,33 +380,117 @@ export default function AdminDashboardPage() {
   // Export to Excel function
   const handleExportExcel = () => {
     if (filteredData.length === 0) {
-      alert('No data to export');
+      alert('Tidak ada data untuk diekspor');
       return;
     }
 
-    // Prepare data for Excel
-    const excelData = filteredData.map((sub) => ({
-      Date: new Date(sub.submission_date).toLocaleDateString('id-ID'),
-      UPT: sub.submitted_by_upt,
-      'Indicator Type': INDICATOR_TYPE_LABELS[sub.indicator_type] || sub.indicator_type,
-      'Sub-Category': sub.sub_category
-        ? SUB_CATEGORY_LABELS[sub.sub_category] || sub.sub_category
-        : '',
-      Title: sub.title,
-      Narasi: sub.narasi,
-      'Documentation Link': sub.documentation_link || '',
-    }));
+    const excelData = filteredData.map((sub) => {
+      // Base fields (always included)
+      const baseData: Record<string, unknown> = {
+        Tanggal: new Date(sub.submission_date).toLocaleDateString('id-ID'),
+        UPT: sub.submitted_by_upt,
+        'Tipe Indikator': INDICATOR_TYPE_LABELS[sub.indicator_type] || sub.indicator_type,
+      };
 
-    // Create worksheet and workbook
+      // Add sub-category if exists
+      if (sub.sub_category) {
+        baseData['Sub-Kategori'] = SUB_CATEGORY_LABELS[sub.sub_category] || sub.sub_category;
+      }
+
+      // Check indicator type and add appropriate fields
+      if (sub.indicator_type === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL') {
+        // Skoring Media fields
+        if (sub.sub_category === 'MEDIA MASSA' && sub.skor_media_massa !== null) {
+          baseData['Skor Media Massa'] = sub.skor_media_massa;
+        }
+        if (sub.sub_category === 'MEDIA SOSIAL' && sub.skor_media_sosial !== null) {
+          baseData['Skor Media Sosial'] = sub.skor_media_sosial;
+        }
+      } else if (sub.indicator_type === 'INFLUENCER DAN SMR') {
+        // Influencer/SMR fields
+        baseData['Nomor Konten'] = sub.nomor_konten || '';
+        baseData['Judul'] = sub.title || '';
+
+        // Add social media links based on sub-category
+        if (sub.sub_category === 'INFLUENCER') {
+          // Instagram (2 accounts)
+          if (sub.link_instagram_1) {
+            baseData['Instagram 1 - Link'] = sub.link_instagram_1;
+            baseData['Instagram 1 - Username'] = sub.username_instagram_1 || '';
+          }
+          if (sub.link_instagram_2) {
+            baseData['Instagram 2 - Link'] = sub.link_instagram_2;
+            baseData['Instagram 2 - Username'] = sub.username_instagram_2 || '';
+          }
+          
+          // Twitter (2 accounts)
+          if (sub.link_twitter_1) {
+            baseData['Twitter 1 - Link'] = sub.link_twitter_1;
+            baseData['Twitter 1 - Username'] = sub.username_twitter_1 || '';
+          }
+          if (sub.link_twitter_2) {
+            baseData['Twitter 2 - Link'] = sub.link_twitter_2;
+            baseData['Twitter 2 - Username'] = sub.username_twitter_2 || '';
+          }
+          
+          // YouTube (2 channels)
+          if (sub.link_youtube_1) {
+            baseData['YouTube 1 - Link'] = sub.link_youtube_1;
+            baseData['YouTube 1 - Channel'] = sub.username_youtube_1 || '';
+          }
+          if (sub.link_youtube_2) {
+            baseData['YouTube 2 - Link'] = sub.link_youtube_2;
+            baseData['YouTube 2 - Channel'] = sub.username_youtube_2 || '';
+          }
+          
+          // TikTok (1 account)
+          if (sub.link_tiktok) {
+            baseData['TikTok - Link'] = sub.link_tiktok;
+            baseData['TikTok - Username'] = sub.username_tiktok || '';
+          }
+        } else if (sub.sub_category === 'SMR') {
+          // Instagram (1 account)
+          if (sub.link_instagram_1) {
+            baseData['Instagram - Link'] = sub.link_instagram_1;
+            baseData['Instagram - Username'] = sub.username_instagram_1 || '';
+          }
+          
+          // Facebook (1 account)
+          if (sub.link_facebook) {
+            baseData['Facebook - Link'] = sub.link_facebook;
+            baseData['Facebook - Username'] = sub.username_facebook || '';
+          }
+          
+          // Twitter (1 account)
+          if (sub.link_twitter_1) {
+            baseData['Twitter - Link'] = sub.link_twitter_1;
+            baseData['Twitter - Username'] = sub.username_twitter_1 || '';
+          }
+        }
+      } else {
+        // Standard fields for other indicator types
+        baseData['Judul'] = sub.title || '';
+        
+        // Check if it's KONTEN IN-CHANGE or KONTEN WAG (uses link_media)
+        if (sub.indicator_type === 'KONTEN IN-CHANGE' || sub.indicator_type === 'KONTEN WAG') {
+          baseData['Link Media'] = sub.link_media || '';
+        } else {
+          // Other indicators use narasi and documentation_link
+          baseData['Narasi'] = sub.narasi || '';
+          baseData['Link Dokumentasi'] = sub.documentation_link || '';
+        }
+      }
+
+      return baseData;
+    });
+
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Submissions');
 
-    // Generate filename with timestamp
     const timestamp = new Date().toISOString().split('T')[0];
-    const filename = `UPT_Submissions_${timestamp}.xlsx`;
+    const filename = `Laporan_UPT_${timestamp}.xlsx`;
 
-    // Download
     XLSX.writeFile(wb, filename);
   };
 
@@ -427,10 +505,10 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-neon-blue font-mono">LOADING ADMIN INTERFACE...</p>
+          <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-gray-600">Memuat dashboard...</p>
         </div>
       </div>
     );
@@ -441,113 +519,133 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
-      {/* Cyberpunk Header */}
-      <div className="max-w-7xl mx-auto">
-        {/* Top Bar */}
-        <div className="bg-cyber-light border-2 border-neon-pink rounded-lg p-4 mb-6 shadow-glow-pink-sm">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-neon-pink rounded-lg flex items-center justify-center shadow-glow-pink">
-                <span className="text-cyber-dark font-mono font-bold text-xl">⬢</span>
+              <div className="relative w-10 h-10">
+                <Image 
+                  src="/Logo_PLN.png" 
+                  alt="Logo PLN" 
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div>
-                <h1 className="text-neon-pink text-3xl font-mono font-bold tracking-wider">
-                  ADMIN DASHBOARD
-                </h1>
-                <p className="text-cyber-text-dim font-mono text-sm">
-                  SYSTEM ADMINISTRATOR // FULL ACCESS
-                </p>
+                <h1 className="text-xl font-bold text-gray-800">Dashboard Admin</h1>
+                <p className="text-sm text-gray-500">Sistem Pelaporan Kinerja UPT</p>
               </div>
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-cyber-text font-mono text-sm">{user?.name}</p>
-                <p className="text-cyber-text-dim font-mono text-xs">{user?.email}</p>
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-700">{user?.name}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
               <button
                 onClick={handleLogout}
-                className="bg-cyber-dark border-2 border-neon-pink text-neon-pink px-4 py-2 rounded font-mono
-                           hover:bg-neon-pink hover:text-cyber-dark hover:shadow-glow-pink-sm
-                           transition-all duration-300"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
               >
-                LOGOUT
+                Keluar
               </button>
             </div>
           </div>
         </div>
+      </header>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          {/* Card 1 */}
-          <div className="bg-cyber-darker border-2 border-neon-blue rounded-lg p-6 shadow-glow-blue-sm hover:shadow-glow-blue transition-all">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-neon-blue rounded flex items-center justify-center">
-                <span className="text-cyber-dark font-bold">📊</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Total Submissions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Laporan</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">
+                  {isLoadingData ? '...' : totalSubmissions}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Dari semua UPT</p>
               </div>
-              <h3 className="text-neon-blue font-mono font-bold">TOTAL SUBMISSIONS</h3>
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-pln-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-cyber-text text-4xl font-mono font-bold">
-              {isLoadingData ? '...' : totalSubmissions}
-            </p>
-            <p className="text-cyber-text-dim font-mono text-sm mt-1">Across all UPTs</p>
           </div>
 
-          {/* Card 2 */}
-          <div className="bg-cyber-darker border-2 border-neon-green rounded-lg p-6 shadow-glow-green-sm hover:shadow-glow-green transition-all">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-neon-green rounded flex items-center justify-center">
-                <span className="text-cyber-dark font-bold">👥</span>
+          {/* Active UPTs */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">UPT Aktif</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">
+                  {isLoadingData ? '...' : activeUPTs}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Sudah mengirim laporan</p>
               </div>
-              <h3 className="text-neon-green font-mono font-bold">ACTIVE UPTs</h3>
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-cyber-text text-4xl font-mono font-bold">
-              {isLoadingData ? '...' : activeUPTs}
-            </p>
-            <p className="text-cyber-text-dim font-mono text-sm mt-1">Connected to network</p>
           </div>
 
-          {/* Card 3 */}
-          <div className="bg-cyber-darker border-2 border-neon-purple rounded-lg p-6 shadow-glow-purple transition-all">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-neon-purple rounded flex items-center justify-center">
-                <span className="text-cyber-dark font-bold">📅</span>
+          {/* This Month */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">
+                  {isLoadingData ? '...' : thisMonthSubmissions}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Laporan baru</p>
               </div>
-              <h3 className="text-neon-purple font-mono font-bold">THIS MONTH</h3>
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-cyber-text text-4xl font-mono font-bold">
-              {isLoadingData ? '...' : thisMonthSubmissions}
-            </p>
-            <p className="text-cyber-text-dim font-mono text-sm mt-1">New reports submitted</p>
           </div>
         </div>
 
-        {/* Instructions Section */}
-        <div className="bg-cyber-darker border-2 border-neon-blue rounded-lg p-6 mb-6 shadow-glow-blue-sm">
+        {/* Instructions Management */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-neon-blue rounded flex items-center justify-center">
-                <span className="text-cyber-dark font-bold text-xl">📋</span>
+              <div className="w-10 h-10 bg-pln-blue rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
               </div>
-              <h3 className="text-neon-blue text-xl font-mono font-bold">INSTRUCTIONS MANAGEMENT</h3>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Manajemen Instruksi</h2>
+                <p className="text-sm text-gray-500">Kelola instruksi untuk UPT</p>
+              </div>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowManageTargets(true)}
-                className="bg-neon-green text-cyber-dark px-6 py-3 rounded font-mono font-bold shadow-glow-purple
-                           hover:bg-neon-blue hover:shadow-glow-blue
-                           transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
               >
-                🎯 MANAGE TARGETS
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Kelola Target
               </button>
               <button
                 onClick={() => setShowCreateInstruction(true)}
-                className="bg-neon-cyan text-cyber-dark px-6 py-3 rounded font-mono font-bold shadow-glow-pink
-                           hover:bg-neon-blue hover:shadow-glow-blue
-                           transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="bg-pln-blue hover:bg-pln-blue-dark text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
               >
-                ➕ CREATE INSTRUCTION
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Buat Instruksi
               </button>
             </div>
           </div>
@@ -555,115 +653,97 @@ export default function AdminDashboardPage() {
           {/* Instructions Table */}
           {isLoadingInstructions ? (
             <div className="text-center py-12">
-              <div className="inline-block w-12 h-12 border-4 border-neon-pink border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-neon-pink font-mono">LOADING INSTRUCTIONS...</p>
+              <div className="inline-block w-10 h-10 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-gray-500">Memuat instruksi...</p>
             </div>
           ) : instructions.length === 0 ? (
             <div className="text-center py-12">
-              <div className="inline-block p-6 bg-cyber-light border-2 border-neon-pink rounded-lg mb-4">
-                <span className="text-neon-pink text-4xl">📋</span>
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
               </div>
-              <h4 className="text-neon-pink text-lg font-mono font-bold mb-2">
-                NO INSTRUCTIONS YET
-              </h4>
-              <p className="text-cyber-text-dim font-mono text-sm">
-                {'>'} Click CREATE INSTRUCTION to send templates to UPTs
-              </p>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Belum Ada Instruksi</h3>
+              <p className="text-gray-500 text-sm">Klik tombol &quot;Buat Instruksi&quot; untuk membuat instruksi baru</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b-2 border-neon-pink/30">
-                    <th className="text-left p-4 text-neon-pink font-mono font-bold text-sm">STATUS</th>
-                    <th className="text-left p-4 text-neon-pink font-mono font-bold text-sm">SUB-CATEGORY</th>
-                    <th className="text-left p-4 text-neon-pink font-mono font-bold text-sm">TARGET</th>
-                    <th className="text-left p-4 text-neon-pink font-mono font-bold text-sm">TITLE</th>
-                    <th className="text-left p-4 text-neon-pink font-mono font-bold text-sm">GOOGLE DRIVE</th>
-                    <th className="text-left p-4 text-neon-pink font-mono font-bold text-sm">CREATED</th>
-                    <th className="text-left p-4 text-neon-pink font-mono font-bold text-sm">ACTIONS</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Sub-Kategori</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Target</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Judul</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Google Drive</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Tanggal</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {instructions.map((instruction, index) => (
                     <tr
                       key={instruction.$id}
-                      className={`
-                        border-b border-neon-pink/10
-                        hover:bg-cyber-light/50 transition-colors
-                        ${index % 2 === 0 ? 'bg-cyber-darker' : 'bg-cyber-dark/50'}
-                      `}
+                      className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                      }`}
                     >
-                      <td className="p-4">
-                        <span
-                          className={`
-                            px-3 py-1 rounded font-mono text-xs font-bold
-                            ${instruction.status === 'PUBLISHED'
-                              ? 'bg-neon-green/20 text-neon-green border border-neon-green'
-                              : 'bg-cyber-light/50 text-cyber-text-dim border border-cyber-light'
-                            }
-                          `}
-                        >
-                          {instruction.status}
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          instruction.status === 'PUBLISHED'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {instruction.status === 'PUBLISHED' ? 'Dipublikasi' : 'Draft'}
                         </span>
                       </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm">
-                        {instruction.sub_category}
-                      </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm">
+                      <td className="py-3 px-4 text-sm text-gray-700">{instruction.sub_category}</td>
+                      <td className="py-3 px-4 text-sm text-gray-700">
                         {instruction.target_type === 'ALL' ? (
-                          <span className="text-neon-blue">All UPTs</span>
+                          <span className="text-pln-blue">Semua UPT</span>
                         ) : (
-                          <span className="text-neon-purple">
-                            {instruction.target_upt?.length || 0} UPT
-                          </span>
+                          <span className="text-purple-600">{instruction.target_upt?.length || 0} UPT</span>
                         )}
                       </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm max-w-xs truncate" title={instruction.title}>
+                      <td className="py-3 px-4 text-sm text-gray-700 max-w-xs truncate" title={instruction.title}>
                         {instruction.title}
                       </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm">
+                      <td className="py-3 px-4 text-sm">
                         {instruction.content_link ? (
                           <a
                             href={instruction.content_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-neon-blue hover:text-neon-pink transition-colors underline"
+                            className="text-pln-blue hover:text-pln-blue-dark transition-colors underline"
                           >
-                            📁 View
+                            Lihat
                           </a>
                         ) : (
-                          <span className="text-cyber-text-dim">—</span>
+                          <span className="text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="p-4 text-cyber-text-dim font-mono text-xs">
+                      <td className="py-3 px-4 text-sm text-gray-500">
                         {new Date(instruction.$createdAt).toLocaleDateString('id-ID', {
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric'
                         })}
                       </td>
-                      <td className="p-4">
+                      <td className="py-3 px-4">
                         <div className="flex gap-2">
                           {instruction.status === 'DRAFT' && (
                             <button
                               onClick={() => handlePublishInstruction(instruction.$id)}
-                              className="bg-neon-green/20 border border-neon-green text-neon-green px-3 py-1 rounded font-mono text-xs font-bold
-                                         hover:bg-neon-green hover:text-cyber-dark
-                                         transition-all duration-300"
-                              title="Publish"
+                              className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                             >
-                              📢 PUBLISH
+                              Publikasi
                             </button>
                           )}
                           <button
                             onClick={() => handleDeleteInstruction(instruction.$id)}
-                            className="bg-red-900/20 border border-red-500 text-red-400 px-3 py-1 rounded font-mono text-xs font-bold
-                                       hover:bg-red-500 hover:text-white
-                                       transition-all duration-300"
-                            title="Delete"
+                            className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                           >
-                            🗑 DELETE
+                            Hapus
                           </button>
                         </div>
                       </td>
@@ -692,203 +772,211 @@ export default function AdminDashboardPage() {
         />
 
         {/* Filter Panel */}
-        <div className="bg-cyber-darker border-2 border-neon-blue rounded-lg p-6 mb-6 shadow-glow-blue-sm">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-neon-blue rounded flex items-center justify-center">
-              <span className="text-cyber-dark font-bold text-xl">⚙</span>
+            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
             </div>
-            <h3 className="text-neon-blue text-xl font-mono font-bold">FILTER CONTROLS</h3>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Filter Data</h2>
+              <p className="text-sm text-gray-500">Saring data berdasarkan kriteria</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* UPT Filter */}
             <div>
-              <label className="text-cyber-text font-mono text-sm mb-2 block">UPT:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">UPT</label>
               <select
                 value={uptFilter}
                 onChange={(e) => setUptFilter(e.target.value)}
-                className="w-full bg-cyber-light border-2 border-cyber-light text-cyber-text font-mono px-3 py-2 rounded
-                           focus:border-neon-pink focus:shadow-glow-pink-sm focus:outline-none
-                           transition-all duration-300"
+                className="w-full border border-gray-300 text-gray-700 px-3 py-2 rounded-lg focus:ring-2 focus:ring-pln-blue focus:border-pln-blue transition-colors"
               >
-                <option value="all">All UPTs</option>
+                <option value="all">Semua UPT</option>
                 {UPT_NAMES.map((upt) => (
-                  <option key={upt} value={upt}>
-                    {upt}
-                  </option>
+                  <option key={upt} value={upt}>{upt}</option>
                 ))}
               </select>
             </div>
 
             {/* Indicator Filter */}
             <div>
-              <label className="text-cyber-text font-mono text-sm mb-2 block">Indicator:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Indikator</label>
               <select
                 value={indicatorFilter}
                 onChange={(e) => setIndicatorFilter(e.target.value)}
-                className="w-full bg-cyber-light border-2 border-cyber-light text-cyber-text font-mono px-3 py-2 rounded
-                           focus:border-neon-pink focus:shadow-glow-pink-sm focus:outline-none
-                           transition-all duration-300"
+                className="w-full border border-gray-300 text-gray-700 px-3 py-2 rounded-lg focus:ring-2 focus:ring-pln-blue focus:border-pln-blue transition-colors"
               >
-                <option value="all">All Indicators</option>
+                <option value="all">Semua Indikator</option>
                 {INDICATOR_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {INDICATOR_TYPE_LABELS[type]}
-                  </option>
+                  <option key={type} value={type}>{INDICATOR_TYPE_LABELS[type]}</option>
                 ))}
               </select>
             </div>
 
             {/* Date From */}
             <div>
-              <label className="text-cyber-text font-mono text-sm mb-2 block">From Date:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Dari Tanggal</label>
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full bg-cyber-light border-2 border-cyber-light text-cyber-text font-mono px-3 py-2 rounded
-                           focus:border-neon-pink focus:shadow-glow-pink-sm focus:outline-none
-                           transition-all duration-300"
+                className="w-full border border-gray-300 text-gray-700 px-3 py-2 rounded-lg focus:ring-2 focus:ring-pln-blue focus:border-pln-blue transition-colors"
               />
             </div>
 
             {/* Date To */}
             <div>
-              <label className="text-cyber-text font-mono text-sm mb-2 block">To Date:</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sampai Tanggal</label>
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-full bg-cyber-light border-2 border-cyber-light text-cyber-text font-mono px-3 py-2 rounded
-                           focus:border-neon-pink focus:shadow-glow-pink-sm focus:outline-none
-                           transition-all duration-300"
+                className="w-full border border-gray-300 text-gray-700 px-3 py-2 rounded-lg focus:ring-2 focus:ring-pln-blue focus:border-pln-blue transition-colors"
               />
             </div>
           </div>
 
           {/* Filter Summary */}
-          <div className="mt-4 pt-4 border-t border-neon-pink/20">
-            <p className="text-cyber-text-dim font-mono text-sm">
-              {'>'} Showing <span className="text-neon-green font-bold">{filteredData.length}</span> of{' '}
-              <span className="text-neon-green font-bold">{totalSubmissions}</span> submissions
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-600">
+              Menampilkan <span className="font-semibold text-pln-blue">{filteredData.length}</span> dari{' '}
+              <span className="font-semibold text-pln-blue">{totalSubmissions}</span> laporan
             </p>
           </div>
         </div>
 
         {/* Recap Visualization Section */}
         {isLoadingData || isLoadingTargets ? (
-          <div className="bg-cyber-darker border-2 border-neon-blue rounded-lg p-12 mb-6 shadow-glow-blue-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 mb-8">
             <div className="text-center">
-              <div className="inline-block w-16 h-16 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-neon-blue font-mono text-lg">LOADING VISUALIZATION DATA...</p>
+              <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-gray-500">Memuat data visualisasi...</p>
             </div>
           </div>
         ) : (
-          <div className="bg-cyber-darker border-2 border-neon-blue rounded-lg p-6 mb-6 shadow-glow-blue-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-8 h-8 bg-neon-blue rounded flex items-center justify-center">
-                <span className="text-cyber-dark font-bold text-xl">📊</span>
+              <div className="w-10 h-10 bg-pln-blue rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
               </div>
-              <h3 className="text-neon-blue text-xl font-mono font-bold">RECAP VISUALIZATION</h3>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Rekap Visualisasi</h2>
+                <p className="text-sm text-gray-500">Perbandingan target dan realisasi</p>
+              </div>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {/* Realisasi Card */}
-              <div className="bg-cyber-light border-2 border-neon-blue rounded-lg p-6 shadow-glow-blue-sm hover:shadow-glow-blue transition-all">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-neon-blue text-sm font-mono font-bold tracking-wider">REALISASI</h4>
-                  <div className="w-10 h-10 bg-neon-blue/20 rounded-full flex items-center justify-center border-2 border-neon-blue">
-                    <span className="text-2xl">🏃‍♂️</span>
-                  </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-600">Realisasi</span>
+                  <span className="text-2xl">📊</span>
                 </div>
-                <p className="text-neon-blue text-5xl font-mono font-bold mb-2">{totalRealisasi}</p>
-                <p className="text-cyber-text-dim text-xs font-mono">Submissions Completed</p>
+                <p className="text-4xl font-bold text-blue-700">{totalRealisasi}</p>
+                <p className="text-xs text-blue-500 mt-1">Laporan selesai</p>
               </div>
 
               {/* Target Card */}
-              <div className="bg-cyber-light border-2 border-neon-purple rounded-lg p-6 shadow-glow-purple transition-all hover:shadow-glow-purple">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-neon-purple text-sm font-mono font-bold tracking-wider">TARGET</h4>
-                  <div className="w-10 h-10 bg-neon-purple/20 rounded-full flex items-center justify-center border-2 border-neon-purple">
-                    <span className="text-2xl">🎯</span>
-                  </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-purple-600">Target</span>
+                  <span className="text-2xl">🎯</span>
                 </div>
-                <p className="text-neon-purple text-5xl font-mono font-bold mb-2">{totalTarget}</p>
-                <p className="text-cyber-text-dim text-xs font-mono">Total Target Set</p>
+                <p className="text-4xl font-bold text-purple-700">{totalTarget}</p>
+                <p className="text-xs text-purple-500 mt-1">Total target</p>
               </div>
 
               {/* Capaian Card */}
-              <div className="bg-cyber-light border-2 border-neon-green rounded-lg p-6 shadow-glow-green-sm hover:shadow-glow-green transition-all">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-neon-green text-sm font-mono font-bold tracking-wider">CAPAIAN</h4>
-                  <div className="w-10 h-10 bg-neon-green/20 rounded-full flex items-center justify-center border-2 border-neon-green">
-                    <span className="text-2xl">🏵️</span>
-                  </div>
+              <div className={`rounded-xl p-6 ${
+                capaianPercentage >= 81 
+                  ? 'bg-green-50 border border-green-200'
+                  : capaianPercentage >= 41
+                  ? 'bg-yellow-50 border border-yellow-200'
+                  : 'bg-red-50 border border-red-200'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm font-medium ${
+                    capaianPercentage >= 81
+                      ? 'text-green-600'
+                      : capaianPercentage >= 41
+                      ? 'text-yellow-600'
+                      : 'text-red-600'
+                  }`}>Capaian</span>
+                  <span className="text-2xl">🏆</span>
                 </div>
-                <p className="text-neon-green text-5xl font-mono font-bold mb-2">{capaianPercentage}%</p>
-                <p className="text-cyber-text-dim text-xs font-mono">Achievement Rate</p>
+                <p className={`text-4xl font-bold ${
+                  capaianPercentage >= 81
+                    ? 'text-green-700'
+                    : capaianPercentage >= 41
+                    ? 'text-yellow-700'
+                    : 'text-red-700'
+                }`}>{capaianPercentage}%</p>
+                <p className={`text-xs mt-1 ${
+                  capaianPercentage >= 81
+                    ? 'text-green-500'
+                    : capaianPercentage >= 41
+                    ? 'text-yellow-500'
+                    : 'text-red-500'
+                }`}>Persentase tercapai</p>
               </div>
             </div>
 
             {/* Bar Chart */}
-            <div className="bg-cyber-light border-2 border-neon-blue/30 rounded-lg p-6">
-              <h4 className="text-neon-blue text-lg font-mono font-bold mb-4">
-                {'>'} PERFORMANCE BY UPT
-              </h4>
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+              <h3 className="text-md font-semibold text-gray-700 mb-4">Performa per UPT</h3>
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart
                   data={chartData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1A1A2E" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis 
                     dataKey="name" 
-                    stroke="#00F0FF" 
+                    stroke="#6B7280" 
                     angle={-45}
                     textAnchor="end"
                     height={80}
-                    style={{ fontSize: '12px', fontFamily: 'monospace', fill: '#00F0FF' }}
+                    style={{ fontSize: '12px', fill: '#6B7280' }}
                   />
                   <YAxis 
-                    stroke="#00F0FF"
-                    style={{ fontSize: '12px', fontFamily: 'monospace', fill: '#00F0FF' }}
+                    stroke="#6B7280"
+                    style={{ fontSize: '12px', fill: '#6B7280' }}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0A0A1A',
-                      border: '2px solid #00F0FF',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E7EB',
                       borderRadius: '8px',
-                      fontFamily: 'monospace',
-                      color: '#E0E0E0'
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                     }}
-                    labelStyle={{ color: '#00F0FF', fontWeight: 'bold' }}
+                    labelStyle={{ color: '#374151', fontWeight: 'bold' }}
                   />
-                  <Legend 
-                    wrapperStyle={{
-                      fontFamily: 'monospace',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <Bar dataKey="target" fill="#BD00FF" name="Target" opacity={0.3} />
+                  <Legend />
+                  <Bar dataKey="target" fill="#C4B5FD" name="Target" opacity={0.6} />
                   <Bar dataKey="realisasi" name="Realisasi">
                     {chartData.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`}
-                        fill={entry.realisasi >= entry.target ? '#39FF14' : '#00F0FF'}
+                        fill={entry.realisasi >= entry.target ? '#10B981' : '#0072BC'}
                       />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              <div className="mt-4 flex items-center justify-center gap-6 text-xs font-mono">
+              <div className="mt-4 flex items-center justify-center gap-6 text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-neon-blue rounded"></div>
-                  <span className="text-cyber-text">Below Target</span>
+                  <div className="w-4 h-4 bg-pln-blue rounded"></div>
+                  <span className="text-gray-600">Di bawah target</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-neon-green rounded"></div>
-                  <span className="text-cyber-text">Target Achieved</span>
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <span className="text-gray-600">Target tercapai</span>
                 </div>
               </div>
             </div>
@@ -899,65 +987,58 @@ export default function AdminDashboardPage() {
         <div className="mb-6">
           <button
             onClick={() => setShowDataTable(!showDataTable)}
-            className="w-full bg-cyber-darker border-2 border-neon-blue text-neon-blue px-6 py-4 rounded-lg font-mono font-bold
-                       shadow-glow-blue-sm hover:shadow-glow-blue hover:bg-cyber-light
-                       transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99]
-                       flex items-center justify-center gap-3"
+            className="w-full bg-white border border-gray-200 text-gray-700 px-6 py-4 rounded-xl font-medium
+                       shadow-sm hover:shadow-md hover:bg-gray-50
+                       transition-all flex items-center justify-center gap-3"
           >
-            <span className="text-2xl">
-              {showDataTable ? '⬆️' : '⬇️'}
-            </span>
-            <span>
-              {showDataTable ? 'HIDE DETAILED DATA TABLE' : 'VIEW DETAILED DATA TABLE'}
-            </span>
+            <svg className={`w-5 h-5 transition-transform ${showDataTable ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            {showDataTable ? 'Sembunyikan Tabel Data' : 'Tampilkan Tabel Data Detail'}
           </button>
         </div>
 
         {/* Loading State */}
         {isLoadingData && showDataTable && (
-          <div className="bg-cyber-darker border-2 border-neon-pink rounded-lg p-12 shadow-glow-pink-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
             <div className="text-center">
-              <div className="inline-block w-16 h-16 border-4 border-neon-pink border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-neon-pink font-mono text-lg">LOADING SUBMISSION DATA...</p>
+              <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-gray-500">Memuat data laporan...</p>
             </div>
           </div>
         )}
 
         {/* Empty State */}
         {!isLoadingData && submissions.length === 0 && showDataTable && (
-          <div className="bg-cyber-darker border-2 border-neon-pink rounded-lg p-12 shadow-glow-pink-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
             <div className="text-center">
-              <div className="inline-block p-6 bg-cyber-light border-2 border-neon-pink rounded-lg mb-4">
-                <span className="text-neon-pink text-6xl">📊</span>
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
-              <h2 className="text-neon-pink text-2xl font-mono font-bold mb-4">
-                NO SUBMISSIONS YET
-              </h2>
-              <p className="text-cyber-text-dim font-mono">
-                {'>'} Waiting for UPT users to submit their first reports...
-              </p>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Belum Ada Laporan</h3>
+              <p className="text-gray-500 text-sm">Menunggu UPT mengirimkan laporan pertama...</p>
             </div>
           </div>
         )}
 
         {/* Data Table */}
         {!isLoadingData && submissions.length > 0 && showDataTable && (
-          <div className="bg-cyber-darker border-2 border-neon-pink rounded-lg shadow-glow-pink-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {/* Table Header */}
-            <div className="bg-cyber-light border-b-2 border-neon-pink p-4">
+            <div className="bg-gray-50 border-b border-gray-200 p-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
-                <h2 className="text-neon-pink text-xl font-mono font-bold">
-                  ALL SUBMISSIONS DATABASE
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-800">Database Semua Laporan</h2>
                 <button
                   onClick={handleExportExcel}
                   disabled={filteredData.length === 0}
-                  className="bg-neon-pink text-cyber-dark px-6 py-3 rounded font-mono font-bold
-                             shadow-glow-pink hover:bg-neon-purple hover:shadow-glow-purple
-                             transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]
-                             disabled:bg-cyber-light disabled:text-cyber-text-dim disabled:shadow-none disabled:cursor-not-allowed"
+                  className="bg-pln-blue hover:bg-pln-blue-dark text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  📥 DOWNLOAD EXCEL
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Excel
                 </button>
               </div>
             </div>
@@ -967,17 +1048,17 @@ export default function AdminDashboardPage() {
               <table className="w-full">
                 <thead>
                   {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id} className="border-b border-neon-pink/30">
+                    <tr key={headerGroup.id} className="border-b border-gray-200 bg-gray-50">
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
-                          className="text-left p-4 text-neon-pink font-mono font-bold text-sm cursor-pointer hover:bg-cyber-light/50 transition-colors"
+                          className="text-left py-3 px-4 text-sm font-semibold text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors"
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <div className="flex items-center gap-2">
                             {flexRender(header.column.columnDef.header, header.getContext())}
-                            {header.column.getIsSorted() === 'asc' && <span>🔼</span>}
-                            {header.column.getIsSorted() === 'desc' && <span>🔽</span>}
+                            {header.column.getIsSorted() === 'asc' && <span className="text-pln-blue">↑</span>}
+                            {header.column.getIsSorted() === 'desc' && <span className="text-pln-blue">↓</span>}
                           </div>
                         </th>
                       ))}
@@ -988,23 +1069,19 @@ export default function AdminDashboardPage() {
                   {table.getRowModel().rows.length === 0 ? (
                     <tr>
                       <td colSpan={columns.length} className="p-8 text-center">
-                        <p className="text-cyber-text-dim font-mono">
-                          {'>'} No data matches current filters
-                        </p>
+                        <p className="text-gray-500">Tidak ada data yang sesuai dengan filter</p>
                       </td>
                     </tr>
                   ) : (
                     table.getRowModel().rows.map((row, index) => (
                       <tr
                         key={row.id}
-                        className={`
-                          border-b border-neon-pink/10
-                          hover:bg-cyber-light/50 transition-colors
-                          ${index % 2 === 0 ? 'bg-cyber-darker' : 'bg-cyber-dark/50'}
-                        `}
+                        className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                        }`}
                       >
                         {row.getVisibleCells().map((cell) => (
-                          <td key={cell.id} className="p-4 text-cyber-text font-mono text-sm">
+                          <td key={cell.id} className="py-3 px-4 text-sm text-gray-700">
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </td>
                         ))}
@@ -1016,21 +1093,21 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Table Footer */}
-            <div className="bg-cyber-light border-t-2 border-neon-pink p-4">
-              <p className="text-cyber-text-dim font-mono text-sm">
-                {'>'} Total records displayed: <span className="text-neon-pink font-bold">{table.getRowModel().rows.length}</span>
+            <div className="bg-gray-50 border-t border-gray-200 p-4">
+              <p className="text-sm text-gray-600">
+                Total data ditampilkan: <span className="font-semibold text-pln-blue">{table.getRowModel().rows.length}</span>
               </p>
             </div>
           </div>
         )}
 
         {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-cyber-text-dim font-mono text-xs">
-            <span className="text-neon-pink">⬢</span> UPT REPORTING SYSTEM v1.0 Build with 🔥 by Ragel Listiyono
+        <div className="mt-8 text-center">
+          <p className="text-gray-400 text-sm">
+            © 2025 PLN Indonesia. Sistem Pelaporan Kinerja UPT.
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

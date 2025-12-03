@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { databases } from '@/lib/appwrite';
-import { APPWRITE_CONFIG, INDICATOR_TYPE_LABELS } from '@/lib/constants';
+import { APPWRITE_CONFIG, INDICATOR_TYPE_LABELS, INDICATOR_TYPES } from '@/lib/constants';
 import { Query } from 'appwrite';
-import type { Submission, Instruction, InstructionReadStatus } from '@/types';
+import type { Submission, Instruction, InstructionReadStatus, Target } from '@/types';
 import InstructionDetailModal from '@/components/InstructionDetailModal';
+import Image from 'next/image';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 export default function UPTDashboardPage() {
   const { user, role, uptName, isLoading, logout } = useAuth();
@@ -16,8 +18,10 @@ export default function UPTDashboardPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [instructionReads, setInstructionReads] = useState<InstructionReadStatus[]>([]);
+  const [targets, setTargets] = useState<Target[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingInstructions, setIsLoadingInstructions] = useState(true);
+  const [isLoadingTargets, setIsLoadingTargets] = useState(true);
   
   // Notification state
   const [showBellDropdown, setShowBellDropdown] = useState(false);
@@ -25,8 +29,9 @@ export default function UPTDashboardPage() {
   const [showInstructionModal, setShowInstructionModal] = useState(false);
   
   // Filter state
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); // 0-11
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [indicatorFilter, setIndicatorFilter] = useState<string>('all');
 
   // Verify UPT user role
   useEffect(() => {
@@ -78,7 +83,6 @@ export default function UPTDashboardPage() {
           ]
         );
 
-        // Filter instructions: ALL or contains this UPT
         const filtered = (response.documents as unknown as Instruction[]).filter((inst) => {
           if (inst.target_type === 'ALL') return true;
           if (inst.target_type === 'SPECIFIC' && inst.target_upt) {
@@ -120,6 +124,41 @@ export default function UPTDashboardPage() {
       fetchReadStatus();
     }
   }, [user]);
+
+  // Fetch targets for current UPT
+  useEffect(() => {
+    const fetchTargets = async () => {
+      if (!uptName || role !== 'uptuser') return;
+
+      try {
+        setIsLoadingTargets(true);
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        const currentSemester = currentMonth <= 6 ? 1 : 2;
+
+        const response = await databases.listDocuments(
+          APPWRITE_CONFIG.DATABASE_ID,
+          APPWRITE_CONFIG.COLLECTIONS.TARGETS,
+          [
+            Query.equal('upt_name', uptName),
+            Query.equal('year', currentYear),
+            Query.equal('semester', currentSemester),
+            Query.limit(1000)
+          ]
+        );
+
+        setTargets(response.documents as unknown as Target[]);
+      } catch (error) {
+        console.error('Failed to fetch targets:', error);
+      } finally {
+        setIsLoadingTargets(false);
+      }
+    };
+
+    if (role === 'uptuser' && uptName) {
+      fetchTargets();
+    }
+  }, [uptName, role]);
 
   // Calculate unread instructions
   const unreadInstructions = useMemo(() => {
@@ -176,6 +215,48 @@ export default function UPTDashboardPage() {
     return counts;
   }, [filteredSubmissions]);
 
+  // Calculate chart data for Rekap Visualisasi (per indicator)
+  const chartDataByIndicator = useMemo(() => {
+    const submissionsByIndicator: Record<string, number> = {};
+    
+    // Filter submissions based on indicator filter
+    const filteredByIndicator = indicatorFilter === 'all' 
+      ? submissions 
+      : submissions.filter(sub => sub.indicator_type === indicatorFilter);
+    
+    filteredByIndicator.forEach((sub) => {
+      const indicator = sub.indicator_type;
+      submissionsByIndicator[indicator] = (submissionsByIndicator[indicator] || 0) + 1;
+    });
+
+    const targetsByIndicator: Record<string, number> = {};
+    targets.forEach((target) => {
+      if (indicatorFilter === 'all' || target.indicator_type === indicatorFilter) {
+        const existingTarget = targetsByIndicator[target.indicator_type] || 0;
+        targetsByIndicator[target.indicator_type] = existingTarget + target.target_value;
+      }
+    });
+
+    return INDICATOR_TYPES.map((indicatorType) => ({
+      name: INDICATOR_TYPE_LABELS[indicatorType] || indicatorType,
+      realisasi: submissionsByIndicator[indicatorType] || 0,
+      target: targetsByIndicator[indicatorType] || 0,
+    }));
+  }, [submissions, targets, indicatorFilter]);
+
+  // Calculate summary statistics for Rekap Visualisasi
+  const totalRealisasiRecap = useMemo(() => {
+    return chartDataByIndicator.reduce((sum, item) => sum + item.realisasi, 0);
+  }, [chartDataByIndicator]);
+
+  const totalTargetRecap = useMemo(() => {
+    return chartDataByIndicator.reduce((sum, item) => sum + item.target, 0);
+  }, [chartDataByIndicator]);
+
+  const capaianPercentageRecap = useMemo(() => {
+    if (totalTargetRecap === 0) return 0;
+    return Math.round((totalRealisasiRecap / totalTargetRecap) * 100);
+  }, [totalRealisasiRecap, totalTargetRecap]);
 
   // Reset filter to current month and year
   const handleResetFilter = () => {
@@ -186,8 +267,8 @@ export default function UPTDashboardPage() {
 
   // Month names for dropdown
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
   // Generate year options (current year ± 5 years)
@@ -205,10 +286,10 @@ export default function UPTDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-neon-green border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-neon-green font-mono">LOADING UPT INTERFACE...</p>
+          <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-gray-600">Memuat dashboard...</p>
         </div>
       </div>
     );
@@ -219,39 +300,39 @@ export default function UPTDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
-      {/* Cyberpunk Header */}
-      <div className="max-w-7xl mx-auto">
-        {/* Top Bar */}
-        <div className="bg-cyber-light border-2 border-neon-green rounded-lg p-4 mb-6 shadow-glow-green-sm">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-neon-green rounded-lg flex items-center justify-center shadow-glow-green">
-                <span className="text-cyber-dark font-mono font-bold text-xl">⬡</span>
+              <div className="relative w-10 h-10">
+                <Image 
+                  src="/Logo_PLN.png" 
+                  alt="Logo PLN" 
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div>
-                <h1 className="text-neon-green text-3xl font-mono font-bold tracking-wider">
-                  UPT DASHBOARD
-                </h1>
-                <p className="text-cyber-text-dim font-mono text-sm">
-                  {uptName ? uptName.toUpperCase() : 'UPT USER'} {'//'} REPORTER ACCESS
-                </p>
+                <h1 className="text-xl font-bold text-gray-800">Dashboard UPT</h1>
+                <p className="text-sm text-gray-500">{uptName || 'UPT User'}</p>
               </div>
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Bell Icon with Notification Badge */}
+              {/* Notification Bell */}
               <div className="relative">
                 <button
                   onClick={() => setShowBellDropdown(!showBellDropdown)}
-                  className="relative bg-cyber-dark border-2 border-neon-blue text-neon-blue px-4 py-2 rounded font-mono
-                             hover:bg-neon-blue hover:text-cyber-dark hover:shadow-glow-blue-sm
-                             transition-all duration-300"
-                  title="Instructions from Admin"
+                  className="relative p-2 text-gray-500 hover:text-pln-blue hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  🔔 NOTIFICATIONS
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
                   {unreadCount > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-neon-pink text-cyber-dark w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-glow-pink animate-pulse">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">
                       {unreadCount}
                     </span>
                   )}
@@ -259,63 +340,53 @@ export default function UPTDashboardPage() {
 
                 {/* Dropdown */}
                 {showBellDropdown && (
-                  <div className="absolute right-0 top-full mt-2 w-96 bg-cyber-darker border-2 border-neon-blue rounded-lg shadow-glow-blue-sm z-50 max-h-96 overflow-y-auto">
-                    <div className="bg-cyber-light border-b-2 border-neon-blue p-3">
-                      <h3 className="text-neon-blue font-mono font-bold text-sm">
-                        INSTRUCTIONS FROM ADMIN
-                      </h3>
-                      <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                        {unreadCount > 0 ? `${unreadCount} unread` : 'All read'}
+                  <div className="absolute right-0 top-full mt-2 w-96 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-96 overflow-y-auto animate-fadeIn">
+                    <div className="bg-gray-50 border-b border-gray-200 p-4 rounded-t-xl">
+                      <h3 className="font-semibold text-gray-800">Instruksi dari Admin</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {unreadCount > 0 ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}
                       </p>
                     </div>
 
                     {isLoadingInstructions ? (
-                      <div className="p-4 text-center">
-                        <div className="inline-block w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" />
+                      <div className="p-6 text-center">
+                        <div className="inline-block w-6 h-6 border-2 border-pln-blue border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : instructions.length === 0 ? (
                       <div className="p-6 text-center">
-                        <p className="text-cyber-text-dim font-mono text-sm">
-                          No instructions yet
-                        </p>
+                        <p className="text-gray-500 text-sm">Belum ada instruksi</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-neon-blue/20">
+                      <div className="divide-y divide-gray-100">
                         {instructions.map((instruction) => {
                           const isRead = instructionReads.some((r) => r.instruction_id === instruction.$id);
                           return (
                             <button
                               key={instruction.$id}
                               onClick={() => handleViewInstruction(instruction)}
-                              className={`
-                                w-full text-left p-4 hover:bg-cyber-light/50 transition-colors
-                                ${isRead ? 'opacity-60' : 'bg-neon-blue/5'}
-                              `}
+                              className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${
+                                isRead ? 'opacity-60' : 'bg-blue-50/50'
+                              }`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     {!isRead && (
-                                      <span className="w-2 h-2 bg-neon-pink rounded-full animate-pulse" />
+                                      <span className="w-2 h-2 bg-red-500 rounded-full" />
                                     )}
-                                    <span className={`
-                                      font-mono text-xs px-2 py-0.5 rounded
-                                      ${instruction.sub_category === 'INFLUENCER'
-                                        ? 'bg-neon-blue/20 text-neon-blue'
-                                        : 'bg-neon-purple/20 text-neon-purple'
-                                      }
-                                    `}>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                      instruction.sub_category === 'INFLUENCER'
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-purple-100 text-purple-700'
+                                    }`}>
                                       {instruction.sub_category}
                                     </span>
                                   </div>
-                                  <p className="text-cyber-text font-mono text-sm font-bold truncate">
+                                  <p className="text-sm font-medium text-gray-800 truncate">
                                     {instruction.title}
                                   </p>
-                                  <p className="text-cyber-text-dim font-mono text-xs mt-1 truncate">
-                                    {instruction.sub_category} • {new Date(instruction.published_at || instruction.$createdAt).toLocaleDateString('id-ID')}
-                                  </p>
-                                  <p className="text-cyber-text-dim font-mono text-xs mt-1">
-                                    {new Date(instruction.published_at || '').toLocaleDateString('id-ID', {
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {new Date(instruction.published_at || instruction.$createdAt).toLocaleDateString('id-ID', {
                                       day: '2-digit',
                                       month: 'short',
                                       hour: '2-digit',
@@ -323,7 +394,9 @@ export default function UPTDashboardPage() {
                                     })}
                                   </p>
                                 </div>
-                                <span className="text-neon-blue text-xl">→</span>
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
                               </div>
                             </button>
                           );
@@ -334,235 +407,376 @@ export default function UPTDashboardPage() {
                 )}
               </div>
 
-              <div className="text-right">
-                <p className="text-cyber-text font-mono text-sm">{user?.name}</p>
-                <p className="text-cyber-text-dim font-mono text-xs">{user?.email}</p>
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-700">{user?.name}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
               <button
                 onClick={handleLogout}
-                className="bg-cyber-dark border-2 border-neon-green text-neon-green px-4 py-2 rounded font-mono
-                           hover:bg-neon-green hover:text-cyber-dark hover:shadow-glow-green-sm
-                           transition-all duration-300"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
               >
-                LOGOUT
+                Keluar
               </button>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Notification Banner (if there are unread instructions) */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Notification Banner */}
         {unreadCount > 0 && (
-          <div className="bg-linear-to-r from-neon-pink/20 to-neon-purple/20 border-2 border-neon-pink rounded-lg p-4 mb-6 shadow-glow-pink-sm animate-[slideDown_0.3s_ease-out]">
+          <div className="bg-linear-to-r from-pln-blue to-blue-600 rounded-xl p-6 mb-8 shadow-lg animate-fadeIn">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-neon-pink rounded-lg flex items-center justify-center shadow-glow-pink shrink-0 animate-pulse">
-                <span className="text-cyber-dark font-mono font-bold text-2xl">📢</span>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-neon-pink text-lg font-mono font-bold mb-2">
-                  ADA INSTRUKSI BARU DARI ADMIN!
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  Ada Instruksi Baru dari Admin!
                 </h3>
-                <p className="text-cyber-text font-mono text-sm mb-3">
-                  Terdapat <span className="text-neon-pink font-bold">{unreadCount}</span> instruksi yang belum dibaca untuk pengisian form indikator{' '}
-                  <span className="text-neon-blue font-bold">INFLUENCER DAN SMR</span>.
+                <p className="text-blue-100 text-sm mb-4">
+                  Terdapat <span className="font-bold text-white">{unreadCount}</span> instruksi yang belum dibaca untuk pengisian form indikator.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {unreadInstructions.slice(0, 3).map((instruction) => (
                     <button
                       key={instruction.$id}
                       onClick={() => handleViewInstruction(instruction)}
-                      className="bg-neon-pink/10 border border-neon-pink text-neon-pink px-4 py-2 rounded font-mono text-xs font-bold
-                                 hover:bg-neon-pink hover:text-cyber-dark hover:shadow-glow-pink-sm
-                                 transition-all duration-300"
+                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
-                      📋 {instruction.title}
+                      {instruction.title}
                     </button>
                   ))}
                   {unreadCount > 3 && (
                     <button
                       onClick={() => setShowBellDropdown(true)}
-                      className="bg-neon-purple/10 border border-neon-purple text-neon-purple px-4 py-2 rounded font-mono text-xs font-bold
-                                 hover:bg-neon-purple hover:text-cyber-dark hover:shadow-glow-purple
-                                 transition-all duration-300"
+                      className="bg-pln-yellow text-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-400 transition-colors"
                     >
                       +{unreadCount - 3} lainnya
                     </button>
                   )}
                 </div>
-                <p className="text-cyber-text-dim font-mono text-xs mt-3">
-                  {'>'} Klik tombol di atas untuk melihat detail instruksi, atau gunakan icon 🔔 di header untuk melihat semua instruksi.
-                </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Stats Card */}
-        <div className="grid grid-cols-1 gap-6 mb-6">
-          {/* MY SUBMISSIONS Card with Filters */}
-          <div className="bg-cyber-darker border-2 border-neon-blue rounded-lg p-6 shadow-glow-blue-sm hover:shadow-glow-blue transition-all">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-neon-blue rounded flex items-center justify-center">
-                <span className="text-cyber-dark font-bold">📝</span>
-              </div>
-              <h3 className="text-neon-blue font-mono font-bold">MY SUBMISSIONS</h3>
+        {/* Stats Card with Filters */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-pln-blue rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Laporan Saya</h2>
+              <p className="text-sm text-gray-500">Ringkasan laporan per bulan</p>
+            </div>
+          </div>
+          
+          {/* Filter Controls */}
+          <div className="flex flex-wrap items-end gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bulan</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="w-full border border-gray-300 text-gray-700 px-3 py-2 rounded-lg focus:ring-2 focus:ring-pln-blue focus:border-pln-blue transition-colors"
+              >
+                {monthNames.map((month, index) => (
+                  <option key={index} value={index}>{month}</option>
+                ))}
+              </select>
             </div>
             
-            {/* Filter Controls */}
-            <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-cyber-light rounded border border-neon-blue/30">
-              <div className="flex-1 min-w-[150px]">
-                <label className="block text-cyber-text-dim font-mono text-xs mb-1">MONTH</label>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="w-full bg-cyber-dark border border-neon-blue text-cyber-text px-3 py-2 rounded font-mono text-sm
-                             focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent
-                             hover:border-neon-green transition-colors"
-                >
-                  {monthNames.map((month, index) => (
-                    <option key={index} value={index}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="flex-1 min-w-[120px]">
-                <label className="block text-cyber-text-dim font-mono text-xs mb-1">YEAR</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="w-full bg-cyber-dark border border-neon-blue text-cyber-text px-3 py-2 rounded font-mono text-sm
-                             focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent
-                             hover:border-neon-green transition-colors"
-                >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="shrink-0 self-end">
-                <button
-                  onClick={handleResetFilter}
-                  className="bg-cyber-dark border border-neon-blue text-neon-blue px-4 py-2 rounded font-mono text-sm
-                             hover:bg-neon-blue hover:text-cyber-dark hover:shadow-glow-blue-sm
-                             transition-all duration-300"
-                >
-                  RESET
-                </button>
-              </div>
+            <div className="flex-1 min-w-[120px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tahun</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="w-full border border-gray-300 text-gray-700 px-3 py-2 rounded-lg focus:ring-2 focus:ring-pln-blue focus:border-pln-blue transition-colors"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
             </div>
+            
+            <button
+              onClick={handleResetFilter}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Reset
+            </button>
+          </div>
 
-            {/* Indicator Breakdown */}
-            <div className="space-y-2">
-              {isLoadingData ? (
-                <p className="text-cyber-text-dim font-mono text-center py-4">Loading...</p>
-              ) : filteredSubmissions.length === 0 ? (
-                <p className="text-cyber-text-dim font-mono text-center py-4">
-                  No submissions for {monthNames[selectedMonth]} {selectedYear}
-                </p>
-              ) : (
-                <>
-                  {Object.entries(INDICATOR_TYPE_LABELS).map(([key, label]) => (
-                    <div key={key} className="flex justify-between items-center font-mono text-sm">
-                      <span className="text-neon-blue capitalize">{label.toLowerCase()}</span>
-                      <span className="text-cyber-text font-bold text-lg">
-                        {indicatorCounts[key] || 0}
-                      </span>
-                    </div>
-                  ))}
-                  
-
-                </>
-              )}
-            </div>
+          {/* Indicator Breakdown */}
+          <div className="space-y-3">
+            {isLoadingData ? (
+              <div className="text-center py-8">
+                <div className="inline-block w-8 h-8 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-2" />
+                <p className="text-gray-500 text-sm">Memuat data...</p>
+              </div>
+            ) : filteredSubmissions.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500">Tidak ada laporan untuk {monthNames[selectedMonth]} {selectedYear}</p>
+              </div>
+            ) : (
+              <>
+                {Object.entries(INDICATOR_TYPE_LABELS).map(([key, label]) => (
+                  <div key={key} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">{label}</span>
+                    <span className="text-lg font-bold text-pln-blue">
+                      {indicatorCounts[key] || 0}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between items-center p-3 bg-pln-blue/10 rounded-lg border border-pln-blue/20">
+                  <span className="text-sm font-semibold text-gray-700">Total</span>
+                  <span className="text-xl font-bold text-pln-blue">
+                    {filteredSubmissions.length}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* New Submission Card */}
-          <div className="bg-cyber-darker border-2 border-neon-blue rounded-lg p-8 shadow-glow-blue-sm hover:shadow-glow-blue transition-all">
+        {/* Rekap Visualisasi Section */}
+        {isLoadingData || isLoadingTargets ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 mb-8">
             <div className="text-center">
-              <div className="inline-block p-4 bg-cyber-light border-2 border-neon-blue rounded-lg mb-4">
-                <span className="text-neon-blue text-5xl">➕</span>
+              <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-gray-500">Memuat data visualisasi...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-pln-blue rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
               </div>
-              <h3 className="text-neon-blue text-xl font-mono font-bold mb-3">
-                NEW SUBMISSION
-              </h3>
-              <p className="text-cyber-text-dim font-mono text-sm mb-6">
-                Submit a new performance indicator report
-              </p>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-gray-800">Rekap Visualisasi</h2>
+                <p className="text-sm text-gray-500">Perbandingan target dan realisasi {uptName}</p>
+              </div>
+              
+              {/* Indicator Filter */}
+              <div className="w-64">
+                <select
+                  value={indicatorFilter}
+                  onChange={(e) => setIndicatorFilter(e.target.value)}
+                  className="w-full border border-gray-300 text-gray-700 px-3 py-2 rounded-lg focus:ring-2 focus:ring-pln-blue focus:border-pln-blue transition-colors"
+                >
+                  <option value="all">Semua Indikator</option>
+                  {INDICATOR_TYPES.map((type) => (
+                    <option key={type} value={type}>{INDICATOR_TYPE_LABELS[type]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* Realisasi Card */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-600">Realisasi</span>
+                  <span className="text-2xl">📊</span>
+                </div>
+                <p className="text-4xl font-bold text-blue-700">{totalRealisasiRecap}</p>
+                <p className="text-xs text-blue-500 mt-1">Laporan selesai</p>
+              </div>
+
+              {/* Target Card */}
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-purple-600">Target</span>
+                  <span className="text-2xl">🎯</span>
+                </div>
+                <p className="text-4xl font-bold text-purple-700">{totalTargetRecap}</p>
+                <p className="text-xs text-purple-500 mt-1">Total target</p>
+              </div>
+
+              {/* Capaian Card with Dynamic Color */}
+              <div className={`rounded-xl p-6 ${
+                capaianPercentageRecap >= 81 
+                  ? 'bg-green-50 border border-green-200'
+                  : capaianPercentageRecap >= 41
+                  ? 'bg-yellow-50 border border-yellow-200'
+                  : 'bg-red-50 border border-red-200'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm font-medium ${
+                    capaianPercentageRecap >= 81
+                      ? 'text-green-600'
+                      : capaianPercentageRecap >= 41
+                      ? 'text-yellow-600'
+                      : 'text-red-600'
+                  }`}>Capaian</span>
+                  <span className="text-2xl">🏆</span>
+                </div>
+                <p className={`text-4xl font-bold ${
+                  capaianPercentageRecap >= 81
+                    ? 'text-green-700'
+                    : capaianPercentageRecap >= 41
+                    ? 'text-yellow-700'
+                    : 'text-red-700'
+                }`}>{capaianPercentageRecap}%</p>
+                <p className={`text-xs mt-1 ${
+                  capaianPercentageRecap >= 81
+                    ? 'text-green-500'
+                    : capaianPercentageRecap >= 41
+                    ? 'text-yellow-500'
+                    : 'text-red-500'
+                }`}>Persentase tercapai</p>
+              </div>
+            </div>
+
+            {/* Bar Chart */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+              <h3 className="text-md font-semibold text-gray-700 mb-4">Performa per Indikator</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={chartDataByIndicator}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#6B7280" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={120}
+                    interval={0}
+                    style={{ fontSize: '11px', fill: '#6B7280' }}
+                  />
+                  <YAxis 
+                    stroke="#6B7280"
+                    style={{ fontSize: '12px', fill: '#6B7280' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                    labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                  />
+                  <Legend />
+                  <Bar dataKey="target" fill="#C4B5FD" name="Target" opacity={0.6} />
+                  <Bar dataKey="realisasi" name="Realisasi">
+                    {chartDataByIndicator.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`}
+                        fill={entry.realisasi >= entry.target ? '#10B981' : '#0072BC'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-pln-blue rounded"></div>
+                  <span className="text-gray-600">Di bawah target</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <span className="text-gray-600">Target tercapai</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* New Submission Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-pln-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Buat Laporan Baru</h3>
+              <p className="text-gray-500 text-sm mb-6">Kirim laporan kinerja indikator baru</p>
               <Link
                 href="/upt/submit-report"
-                className="inline-block bg-neon-blue text-cyber-dark px-6 py-3 rounded font-mono font-bold
-                           shadow-glow-blue hover:bg-neon-green hover:shadow-glow-green
-                           transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-2 bg-pln-blue hover:bg-pln-blue-dark text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
-                CREATE REPORT
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Buat Laporan
               </Link>
             </div>
           </div>
 
           {/* View History Card */}
-          <div className="bg-cyber-darker border-2 border-neon-pink rounded-lg p-8 shadow-glow-pink-sm hover:shadow-glow-pink transition-all">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 hover:shadow-md transition-shadow">
             <div className="text-center">
-              <div className="inline-block p-4 bg-cyber-light border-2 border-neon-pink rounded-lg mb-4">
-                <span className="text-neon-pink text-5xl">📋</span>
+              <div className="w-16 h-16 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
               </div>
-              <h3 className="text-neon-pink text-xl font-mono font-bold mb-3">
-                MY REPORTS
-              </h3>
-              <p className="text-cyber-text-dim font-mono text-sm mb-6">
-                View your submission history
-              </p>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Riwayat Laporan</h3>
+              <p className="text-gray-500 text-sm mb-6">Lihat semua laporan yang sudah dikirim</p>
               <Link
                 href="/upt/history"
-                className="inline-block bg-neon-pink text-cyber-dark px-6 py-3 rounded font-mono font-bold
-                           shadow-glow-pink hover:bg-neon-purple hover:shadow-glow-purple
-                           transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >
-                VIEW HISTORY
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                Lihat Riwayat
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Info Panel */}
-        <div className="bg-cyber-darker border-2 border-neon-green rounded-lg p-8 shadow-glow-green-sm">
+        {/* Welcome Panel */}
+        <div className="bg-linear-to-br from-pln-blue to-blue-700 rounded-xl p-8 text-white">
           <div className="text-center">
-            <h2 className="text-neon-green text-2xl font-mono font-bold mb-4">
-              WELCOME TO {uptName ? uptName.toUpperCase() : 'UPT SYSTEM'}
+            <h2 className="text-2xl font-bold mb-4">
+              Selamat Datang di {uptName || 'UPT'}
             </h2>
-            
-            <p className="text-cyber-text font-mono mb-6 max-w-2xl mx-auto">
-              Kamu terhubung ke UPT Reporting System. 
-              Kirimkan indikator kinerja Anda dan pantau kontribusi Anda untuk PLN.
+            <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
+              Anda terhubung ke Sistem Pelaporan Kinerja UPT PLN. 
+              Kirimkan laporan indikator kinerja Anda dan pantau kontribusi untuk PLN Indonesia.
             </p>
-
-            <div className="border-t border-cyber-light pt-6 mt-6">
-              <p className="text-neon-green font-mono text-sm">
-                {'>'} System Status: ONLINE
-              </p>
-              <p className="text-cyber-text-dim font-mono text-sm mt-2">
-                {'>'} All features operational
-              </p>
-              <p className="text-cyber-text-dim font-mono text-sm mt-2">
-                {'>'} Database sync: Active
-              </p>
+            <div className="flex items-center justify-center gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                <span>Sistem Online</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                <span>Database Tersinkronisasi</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-cyber-text-dim font-mono text-xs">
-            <span className="text-neon-green">⬡</span> UPT REPORTING SYSTEM v1.0 Build with 🔥 by Ragel Listiyono 
+        <div className="mt-8 text-center">
+          <p className="text-gray-400 text-sm">
+            © 2025 PLN Indonesia. Sistem Pelaporan Kinerja UPT.
           </p>
         </div>
-      </div>
+      </main>
 
       {/* Instruction Detail Modal */}
       <InstructionDetailModal

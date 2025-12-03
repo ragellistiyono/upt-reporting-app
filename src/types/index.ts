@@ -84,6 +84,7 @@ export interface Submission {
   title?: string;
   narasi?: string;
   documentation_link?: string;
+  link_media?: string | null; // For KONTEN IN-CHANGE and KONTEN WAG
   // Skoring Media fields
   skor_media_massa?: number | null;
   skor_media_sosial?: number | null;
@@ -189,6 +190,7 @@ export interface Target {
   target_value: number; // Target number (e.g., 48 submissions)
   year: number; // Year (e.g., 2025)
   semester: number; // Semester (1 or 2)
+  month: number; // Month (0 = semester-based, 1-12 = specific month)
 }
 
 /**
@@ -198,6 +200,7 @@ export interface TargetFormData {
   indicator_type: IndicatorType | '';
   year: number;
   semester: number;
+  month: number;
   targets: {
     upt_name: string;
     target_value: number;

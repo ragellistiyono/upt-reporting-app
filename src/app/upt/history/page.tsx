@@ -69,10 +69,10 @@ export default function UPTHistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-neon-green border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-neon-green font-mono">LOADING HISTORY...</p>
+          <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-gray-600">Memuat riwayat...</p>
         </div>
       </div>
     );
@@ -83,77 +83,79 @@ export default function UPTHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
-      {/* Cyberpunk Header */}
-      <div className="max-w-7xl mx-auto">
-        {/* Top Bar */}
-        <div className="bg-cyber-light border-2 border-neon-green rounded-lg p-4 mb-6 shadow-glow-green-sm">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Left: Back & Title */}
             <div className="flex items-center gap-4">
               <Link
                 href="/upt"
-                className="w-12 h-12 bg-cyber-dark border-2 border-neon-green rounded-lg flex items-center justify-center 
-                           hover:bg-neon-green hover:text-cyber-dark transition-all duration-300"
+                className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors"
               >
-                <span className="font-mono font-bold text-xl">←</span>
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
               </Link>
               <div>
-                <h1 className="text-neon-green text-3xl font-mono font-bold tracking-wider">
-                  MY SUBMISSION HISTORY
-                </h1>
-                <p className="text-cyber-text-dim font-mono text-sm">
-                  {uptName ? uptName.toUpperCase() : 'UPT USER'} {'//'} REPORT ARCHIVE
-                </p>
+                <h1 className="text-xl font-bold text-gray-900">Riwayat Laporan</h1>
+                <p className="text-sm text-gray-500">{uptName}</p>
               </div>
             </div>
-            
+
+            {/* Right: User & Logout */}
             <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-cyber-text font-mono text-sm">{user?.name}</p>
-                <p className="text-cyber-text-dim font-mono text-xs">{user?.email}</p>
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
               <button
                 onClick={handleLogout}
-                className="bg-cyber-dark border-2 border-neon-green text-neon-green px-4 py-2 rounded font-mono
-                           hover:bg-neon-green hover:text-cyber-dark hover:shadow-glow-green-sm
-                           transition-all duration-300"
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                LOGOUT
+                Keluar
               </button>
             </div>
           </div>
         </div>
+      </header>
 
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Loading State */}
         {isLoadingData && (
-          <div className="bg-cyber-darker border-2 border-neon-green rounded-lg p-12 shadow-glow-green-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
             <div className="text-center">
-              <div className="inline-block w-16 h-16 border-4 border-neon-green border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-neon-green font-mono text-lg">FETCHING SUBMISSION RECORDS...</p>
+              <div className="inline-block w-12 h-12 border-4 border-pln-blue border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-gray-600">Memuat data laporan...</p>
             </div>
           </div>
         )}
 
         {/* Empty State */}
         {!isLoadingData && submissions.length === 0 && (
-          <div className="bg-cyber-darker border-2 border-neon-green rounded-lg p-12 shadow-glow-green-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
             <div className="text-center">
-              <div className="inline-block p-6 bg-cyber-light border-2 border-neon-green rounded-lg mb-4">
-                <span className="text-neon-green text-6xl">📋</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
               </div>
-              <h2 className="text-neon-green text-2xl font-mono font-bold mb-4">
-                NO SUBMISSIONS YET
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Belum Ada Laporan
               </h2>
-              <p className="text-cyber-text-dim font-mono mb-6">
-                {'>'} You haven&apos;t submitted any reports yet.
+              <p className="text-gray-500 mb-6">
+                Anda belum pernah mengirimkan laporan kinerja.
               </p>
               <Link
                 href="/upt/submit-report"
-                className="inline-block bg-neon-green text-cyber-dark px-6 py-3 rounded font-mono font-bold
-                           shadow-glow-green hover:bg-neon-blue hover:shadow-glow-blue
-                           transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center gap-2 bg-pln-blue hover:bg-pln-blue-dark text-white px-6 py-3 rounded-xl font-medium transition-colors"
               >
-                CREATE FIRST REPORT
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Buat Laporan Pertama
               </Link>
             </div>
           </div>
@@ -161,15 +163,15 @@ export default function UPTHistoryPage() {
 
         {/* Data Table */}
         {!isLoadingData && submissions.length > 0 && (
-          <div className="bg-cyber-darker border-2 border-neon-green rounded-lg shadow-glow-green-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {/* Table Header */}
-            <div className="bg-cyber-light border-b-2 border-neon-green p-4">
+            <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-neon-green text-xl font-mono font-bold">
-                  SUBMISSION RECORDS
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Daftar Laporan
                 </h2>
-                <div className="text-cyber-text-dim font-mono text-sm">
-                  Total: <span className="text-neon-green font-bold">{submissions.length}</span> records
+                <div className="text-sm text-gray-500">
+                  Total: <span className="font-semibold text-gray-900">{submissions.length}</span> laporan
                 </div>
               </div>
             </div>
@@ -178,58 +180,57 @@ export default function UPTHistoryPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-neon-green/30">
-                    <th className="text-left p-4 text-neon-green font-mono font-bold text-sm">DATE</th>
-                    <th className="text-left p-4 text-neon-green font-mono font-bold text-sm">INDICATOR TYPE</th>
-                    <th className="text-left p-4 text-neon-green font-mono font-bold text-sm">SUB-CATEGORY</th>
-                    <th className="text-left p-4 text-neon-green font-mono font-bold text-sm">TITLE</th>
-                    <th className="text-left p-4 text-neon-green font-mono font-bold text-sm">DOCUMENTATION</th>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jenis Indikator</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sub-Kategori</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Judul</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Dokumentasi</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {submissions.map((submission, index) => (
+                <tbody className="divide-y divide-gray-200">
+                  {submissions.map((submission) => (
                     <tr
                       key={submission.$id}
-                      className={`
-                        border-b border-neon-green/10
-                        hover:bg-cyber-light/50 transition-colors
-                        ${index % 2 === 0 ? 'bg-cyber-darker' : 'bg-cyber-dark/50'}
-                      `}
+                      className="hover:bg-gray-50 transition-colors"
                     >
-                      <td className="p-4 text-cyber-text font-mono text-sm">
+                      <td className="px-6 py-4 text-sm text-gray-900">
                         {formatDate(submission.submission_date)}
                       </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm">
-                        <span className="bg-neon-green/20 border border-neon-green/50 px-2 py-1 rounded text-neon-green text-xs">
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pln-blue/10 text-pln-blue">
                           {INDICATOR_TYPE_LABELS[submission.indicator_type] || submission.indicator_type}
                         </span>
                       </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm">
+                      <td className="px-6 py-4">
                         {submission.sub_category ? (
-                          <span className="bg-neon-blue/20 border border-neon-blue/50 px-2 py-1 rounded text-neon-blue text-xs">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                             {SUB_CATEGORY_LABELS[submission.sub_category] || submission.sub_category}
                           </span>
                         ) : (
-                          <span className="text-cyber-text-dim text-xs">—</span>
+                          <span className="text-gray-400 text-sm">—</span>
                         )}
                       </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm max-w-md">
+                      <td className="px-6 py-4 text-sm text-gray-900 max-w-md">
                         <div className="truncate" title={submission.title}>
-                          {submission.title}
+                          {submission.title || '—'}
                         </div>
                       </td>
-                      <td className="p-4 text-cyber-text font-mono text-sm">
+                      <td className="px-6 py-4">
                         {submission.documentation_link ? (
                           <a
                             href={submission.documentation_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-neon-blue hover:text-neon-green transition-colors underline"
+                            className="inline-flex items-center gap-1 text-pln-blue hover:text-pln-blue-dark text-sm font-medium transition-colors"
                           >
-                            View Link
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Lihat
                           </a>
                         ) : (
-                          <span className="text-cyber-text-dim text-xs">—</span>
+                          <span className="text-gray-400 text-sm">—</span>
                         )}
                       </td>
                     </tr>
@@ -239,18 +240,16 @@ export default function UPTHistoryPage() {
             </div>
 
             {/* Table Footer */}
-            <div className="bg-cyber-light border-t-2 border-neon-green p-4">
+            <div className="bg-gray-50 border-t border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
-                <p className="text-cyber-text-dim font-mono text-sm">
-                  {'>'} Showing all {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+                <p className="text-sm text-gray-500">
+                  Menampilkan {submissions.length} laporan
                 </p>
                 <Link
                   href="/upt"
-                  className="bg-neon-green text-cyber-dark px-4 py-2 rounded font-mono font-bold
-                             shadow-glow-green-sm hover:bg-neon-blue hover:shadow-glow-blue
-                             transition-all duration-300"
+                  className="bg-pln-blue hover:bg-pln-blue-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
-                  BACK TO DASHBOARD
+                  Kembali ke Dashboard
                 </Link>
               </div>
             </div>
@@ -258,12 +257,12 @@ export default function UPTHistoryPage() {
         )}
 
         {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-cyber-text-dim font-mono text-xs">
-            <span className="text-neon-green">⬡</span> UPT REPORTING SYSTEM v1.0 Build with 🔥 by Ragel Listiyono
+        <div className="mt-8 text-center">
+          <p className="text-sm text-gray-400">
+            Sistem Pelaporan Kinerja UPT — PLN Indonesia
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

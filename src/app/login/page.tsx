@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { MESSAGES } from '@/lib/constants';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -21,7 +22,6 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      // Redirect will be handled by middleware based on role
       router.push('/');
     } catch (err) {
       console.error('Login failed:', err);
@@ -32,158 +32,122 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Cyberpunk Background Effects */}
-      <div className="absolute inset-0 bg-linear-to-br from-cyber-darker via-cyber-dark to-cyber-light opacity-50" />
-      
-      {/* Animated Grid Lines */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-0 left-1/4 w-px h-full bg-linear-to-b from-transparent via-neon-blue to-transparent animate-pulse" />
-        <div className="absolute top-0 left-2/4 w-px h-full bg-linear-to-b from-transparent via-neon-pink to-transparent animate-pulse delay-75" />
-        <div className="absolute top-0 left-3/4 w-px h-full bg-linear-to-b from-transparent via-neon-green to-transparent animate-pulse delay-150" />
-      </div>
-
-      {/* Login Terminal Card */}
-      <div className="relative z-10 w-full max-w-md">
-        {/* Terminal Header */}
-        <div className="bg-cyber-light border-2 border-neon-blue rounded-t-lg p-3 flex items-center gap-2 shadow-glow-blue-sm">
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-neon-pink shadow-glow-pink-sm" />
-            <div className="w-3 h-3 rounded-full bg-neon-green shadow-glow-green-sm" />
-            <div className="w-3 h-3 rounded-full bg-neon-blue shadow-glow-blue-sm" />
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-neon-blue font-mono text-sm tracking-wider">
-              SYSTEM_ACCESS.exe
-            </span>
-          </div>
-        </div>
-
-        {/* Terminal Body */}
-        <div className="bg-cyber-darker border-x-2 border-b-2 border-neon-blue rounded-b-lg p-8 shadow-glow-blue">
-          {/* ASCII Art Header */}
-          <div className="mb-6 font-mono text-neon-green text-xs leading-tight opacity-80">
-            <pre className="text-center">
-{`
-╔═══════════════════════════════════╗
-║      UPT REPORTING SYSTEM v1.0    ║
-║  Build with 🔥 by Ragel Listiyono ║
-╚═══════════════════════════════════╝`}
-            </pre>
-          </div>
-
-          {/* System Message */}
-          <div className="mb-6 border-l-2 border-neon-pink pl-3">
-            <p className="text-cyber-text-dim font-mono text-xs">
-              <span className="text-neon-pink">{'>'}</span> INITIALIZING AUTHENTICATION PROTOCOL...
-            </p>
-            <p className="text-cyber-text-dim font-mono text-xs">
-              <span className="text-neon-green">{'>'}</span> NEURAL INTERFACE: READY
-            </p>
-            <p className="text-cyber-text-dim font-mono text-xs">
-              <span className="text-neon-blue">{'>'}</span> ENTER CREDENTIALS TO PROCEED
-            </p>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 bg-red-950/50 border border-red-500 rounded p-3 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
-              <p className="text-red-400 font-mono text-xs flex items-center gap-2">
-                <span className="text-red-500">⚠</span>
-                {error}
-              </p>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-linear-to-br from-pln-blue to-pln-blue-dark">
+      {/* Login Card */}
+      <div className="w-full max-w-md animate-scaleIn">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header with PLN Branding */}
+          <div className="bg-pln-blue px-8 py-6 text-center">
+            {/* PLN Logo */}
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <div className="relative w-14 h-14">
+                <Image 
+                  src="/Logo_PLN.png" 
+                  alt="Logo PLN" 
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div className="text-left">
+                <h1 className="text-2xl font-bold text-white">PLN</h1>
+                <p className="text-pln-yellow text-xs font-medium">UPT Reporting</p>
+              </div>
             </div>
-          )}
+            <p className="text-blue-100 text-sm mt-2">Sistem Pelaporan Kinerja Unit Pelaksana Teknis</p>
+          </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Input */}
-            <div>
-              <label htmlFor="email" className="block text-neon-blue font-mono text-sm mb-2 tracking-wide">
-                {'>'} USER_ID:
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+          {/* Form Section */}
+          <div className="px-8 py-8">
+            {/* Welcome Text */}
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Selamat Datang</h2>
+              <p className="text-gray-500 text-sm mt-1">Silakan masuk ke akun Anda</p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Email Input */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full bg-white border border-gray-300 text-gray-800 px-4 py-3 rounded-lg
+                            focus:border-pln-blue focus:ring-2 focus:ring-pln-blue/20 focus:outline-none
+                            disabled:bg-gray-100 disabled:cursor-not-allowed
+                            transition-all duration-200 placeholder:text-gray-400"
+                  placeholder="nama@pln.co.id"
+                />
+              </div>
+
+              {/* Password Input */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Kata Sandi
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full bg-white border border-gray-300 text-gray-800 px-4 py-3 rounded-lg
+                            focus:border-pln-blue focus:ring-2 focus:ring-pln-blue/20 focus:outline-none
+                            disabled:bg-gray-100 disabled:cursor-not-allowed
+                            transition-all duration-200 placeholder:text-gray-400"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
                 disabled={isLoading}
-                className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                          focus:border-neon-blue focus:shadow-glow-blue-sm focus:outline-none
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                          transition-all duration-300"
-                placeholder="user@system.pln"
-              />
-            </div>
+                className="w-full bg-pln-blue text-white font-semibold py-3 px-6 rounded-lg
+                           hover:bg-pln-blue-dark
+                           disabled:bg-gray-300 disabled:cursor-not-allowed
+                           transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.99]
+                           shadow-lg hover:shadow-xl"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Memproses...
+                  </span>
+                ) : (
+                  'Masuk'
+                )}
+              </button>
+            </form>
+          </div>
 
-            {/* Password Input */}
-            <div>
-              <label htmlFor="password" className="block text-neon-pink font-mono text-sm mb-2 tracking-wide">
-                {'>'} ACCESS_KEY:
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-                className="w-full bg-cyber-dark border-2 border-cyber-light text-cyber-text font-mono px-4 py-3 rounded
-                          focus:border-neon-pink focus:shadow-glow-pink-sm focus:outline-none
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                          transition-all duration-300"
-                placeholder="••••••••"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-neon-blue text-cyber-dark font-mono font-bold py-3 px-6 rounded
-                         shadow-glow-blue hover:bg-neon-green hover:shadow-glow-green
-                         disabled:bg-cyber-light disabled:text-cyber-text-dim disabled:shadow-none
-                         transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]
-                         disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="inline-block w-4 h-4 border-2 border-cyber-dark border-t-transparent rounded-full animate-spin" />
-                  AUTHENTICATING...
-                </span>
-              ) : (
-                '[ INITIATE_CONNECTION ]'
-              )}
-            </button>
-          </form>
-
-          {/* Footer Text */}
-          <div className="mt-6 pt-6 border-t border-cyber-light">
-            <p className="text-cyber-text-dim font-mono text-xs text-center">
-              <span className="text-neon-purple">⬢</span> SECURED BY QUANTUM ENCRYPTION
-            </p>
-            <p className="text-cyber-text-dim font-mono text-xs text-center mt-1 opacity-60">
-              PLN INDONESIA © 2025 - All Rights Reserved
+          {/* Footer */}
+          <div className="px-8 py-4 bg-gray-50 border-t border-gray-100">
+            <p className="text-gray-400 text-xs text-center">
+              © 2025 PLN Indonesia. Hak Cipta Dilindungi.
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Floating Particles Effect */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-neon-blue rounded-full opacity-20 animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`,
-              animationDuration: `${2 + Math.random() * 3}s`,
-            }}
-          />
-        ))}
       </div>
     </div>
   );
