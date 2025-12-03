@@ -6,6 +6,9 @@ import { useSearchParams } from 'next/navigation';
 import { MESSAGES } from '@/lib/constants';
 import Image from 'next/image';
 
+// Force dynamic rendering - prevent static caching
+export const dynamic = 'force-dynamic';
+
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,15 +30,18 @@ function LoginForm() {
       // Redirect to the intended page or home
       const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
       
+      // Small delay to ensure cookie is set before redirect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Use window.location for hard redirect to ensure cookies are properly set
       // This is more reliable than router.push in production environments
       window.location.href = redirectUrl;
     } catch (err) {
       console.error('Login failed:', err);
       setError(MESSAGES.ERROR.INVALID_CREDENTIALS);
-    } finally {
       setIsLoading(false);
     }
+    // Note: Don't set isLoading to false on success - we're redirecting anyway
   };
 
   return (

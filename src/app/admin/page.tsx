@@ -1,6 +1,9 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { databases } from '@/lib/appwrite';
