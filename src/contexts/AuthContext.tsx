@@ -46,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // User not logged in
       setUser(null);
-      console.log('No active session');
     } finally {
       setIsLoading(false);
     }
@@ -62,14 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Fetch user data after successful login
       await refreshUser();
-    } catch (error: any) {
-      console.error('Login error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        type: error.type,
-        response: error.response
-      });
+    } catch (error) {
       throw error;
     }
   };

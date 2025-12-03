@@ -33,7 +33,6 @@ function LoginForm() {
         redirectUrl = '/upt';
       }
       
-      console.log('Already authenticated, redirecting to:', redirectUrl);
       window.location.href = redirectUrl;
     }
   }, [isAuthenticated, role, authLoading, redirect]);
@@ -46,18 +45,13 @@ function LoginForm() {
     try {
       await login(email, password);
       
-      // Login successful - wait a moment for state to update
-      // Then redirect appropriately
+      // Login successful - redirect appropriately
       setTimeout(() => {
-        // Get redirect URL
         const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
-        
-        console.log('Login successful, redirecting to:', redirectUrl);
         window.location.href = redirectUrl;
       }, 200);
       
-    } catch (err) {
-      console.error('Login failed:', err);
+    } catch {
       setError(MESSAGES.ERROR.INVALID_CREDENTIALS);
       setIsLoading(false);
     }

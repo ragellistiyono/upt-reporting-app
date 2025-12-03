@@ -1,32 +1,47 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
   
-  // Disable static optimization for auth-related pages
-  experimental: {
-    // This ensures middleware runs on every request
-    middlewarePrefetch: 'flexible',
-  },
+  // Strict mode for better error catching
+  reactStrictMode: true,
   
-  // Headers to prevent caching of sensitive pages
+  // Security and performance headers
   async headers() {
     return [
       {
+        // Apply security headers to all routes
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+      {
+        // No caching for auth pages
         source: '/login',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
-          },
-          {
-            key: 'Pragma',
-            value: 'no-cache',
-          },
-          {
-            key: 'Expires',
-            value: '0',
+            value: 'no-store, no-cache, must-revalidate',
           },
         ],
       },
@@ -35,7 +50,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            value: 'no-store, no-cache, must-revalidate',
           },
         ],
       },
@@ -44,7 +59,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            value: 'no-store, no-cache, must-revalidate',
           },
         ],
       },
