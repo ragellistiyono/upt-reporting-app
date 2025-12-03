@@ -20,7 +20,16 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Get session cookie (Appwrite creates this automatically)
-  const sessionCookie = request.cookies.get('a_session_' + process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID);
+  // Try multiple cookie patterns to support both local and production
+  const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const sessionCookie = 
+    request.cookies.get(`a_session_${projectId}`) ||
+    request.cookies.get(`a_session_${projectId}_legacy`) ||
+    // Fallback: check if ANY Appwrite session cookie exists
+    Array.from(request.cookies.getAll()).find(cookie => 
+      cookie.name.startsWith('a_session')
+    );
+  
   const isAuthenticated = !!sessionCookie;
 
   // Check route type
@@ -37,9 +46,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // CASE 2: Authenticated user trying to access login page
-  // Redirect to home (AuthContext will handle final routing)
+  // Check if there's a redirect parameter, use it; otherwise go to home
   if (isPublicRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL('/', request.url));
+    const redirect = request.nextUrl.searchParams.get('redirect');
+    const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
+    return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
 
   // CASE 3: For authenticated users on root path, redirect to appropriate dashboard

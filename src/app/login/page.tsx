@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { MESSAGES } from '@/lib/constants';
 import Image from 'next/image';
 
@@ -14,6 +14,8 @@ export default function LoginPage() {
   
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -22,7 +24,11 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push('/');
+      // Redirect to the intended page or home
+      const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
+      router.push(redirectUrl);
+      // Force a hard refresh to ensure middleware re-evaluates
+      router.refresh();
     } catch (err) {
       console.error('Login failed:', err);
       setError(MESSAGES.ERROR.INVALID_CREDENTIALS);
