@@ -2,7 +2,7 @@
 
 import { useState, Suspense, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { MESSAGES } from '@/lib/constants';
 import Image from 'next/image';
 
@@ -13,7 +13,6 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect');
 
@@ -24,11 +23,13 @@ function LoginForm() {
 
     try {
       await login(email, password);
+      
       // Redirect to the intended page or home
       const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
-      router.push(redirectUrl);
-      // Force a hard refresh to ensure middleware re-evaluates
-      router.refresh();
+      
+      // Use window.location for hard redirect to ensure cookies are properly set
+      // This is more reliable than router.push in production environments
+      window.location.href = redirectUrl;
     } catch (err) {
       console.error('Login failed:', err);
       setError(MESSAGES.ERROR.INVALID_CREDENTIALS);

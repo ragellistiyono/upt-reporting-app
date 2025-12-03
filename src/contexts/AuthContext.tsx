@@ -62,8 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Fetch user data after successful login
       await refreshUser();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        type: error.type,
+        response: error.response
+      });
       throw error;
     }
   };

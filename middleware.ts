@@ -22,15 +22,31 @@ export async function middleware(request: NextRequest) {
   // Get session cookie (Appwrite creates this automatically)
   // Try multiple cookie patterns to support both local and production
   const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  
+  // Get all cookies for debugging
+  const allCookies = request.cookies.getAll();
+  
+  // Find Appwrite session cookie with multiple strategies
   const sessionCookie = 
     request.cookies.get(`a_session_${projectId}`) ||
     request.cookies.get(`a_session_${projectId}_legacy`) ||
     // Fallback: check if ANY Appwrite session cookie exists
-    Array.from(request.cookies.getAll()).find(cookie => 
-      cookie.name.startsWith('a_session')
+    allCookies.find(cookie => 
+      cookie.name.startsWith('a_session') && cookie.value
     );
   
   const isAuthenticated = !!sessionCookie;
+  
+  // Debug logging (only in development or when needed)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Middleware check:', {
+      pathname,
+      isAuthenticated,
+      cookieName: sessionCookie?.name,
+      hasValue: !!sessionCookie?.value,
+      totalCookies: allCookies.length
+    });
+  }
 
   // Check route type
   const isAdminRoute = ADMIN_ROUTES.some(route => pathname.startsWith(route));
@@ -50,6 +66,13 @@ export async function middleware(request: NextRequest) {
   if (isPublicRoute && isAuthenticated) {
     const redirect = request.nextUrl.searchParams.get('redirect');
     const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
+    
+    console.log('Redirecting authenticated user:', {
+      from: pathname,
+      to: redirectUrl,
+      hasRedirectParam: !!redirect
+    });
+    
     return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
 
