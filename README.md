@@ -1,6 +1,6 @@
 # 📊 UPT Reporting System - PLN Indonesia
 
-Sistem Pelaporan Kinerja Unit Pelaksana Teknis PLN Indonesia.
+Sistem Pelaporan Kinerja Unit Pelaksana Teknis PLN Di Indonesia.
 
 ## 🚀 Quick Start
 
