@@ -9,8 +9,10 @@ import Image from 'next/image';
 // Force dynamic rendering - prevent static caching
 export const dynamic = 'force-dynamic';
 
+const EMAIL_DOMAIN = '@digitalcommtrack.com';
+
 function LoginForm() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +45,7 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
+      const email = username.trim().toLowerCase() + EMAIL_DOMAIN;
       await login(email, password);
       
       // Login successful - redirect appropriately
@@ -117,23 +120,24 @@ function LoginForm() {
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email Input */}
+              {/* Username Input */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                  Username
                 </label>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="username"
                   className="w-full bg-white border border-gray-300 text-gray-800 px-4 py-3 rounded-lg
                             focus:border-pln-blue focus:ring-2 focus:ring-pln-blue/20 focus:outline-none
                             disabled:bg-gray-100 disabled:cursor-not-allowed
                             transition-all duration-200 placeholder:text-gray-400"
-                  placeholder="nama@pln.co.id"
+                  placeholder="username"
                 />
               </div>
 

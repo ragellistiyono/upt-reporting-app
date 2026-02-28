@@ -108,7 +108,7 @@ export default function CreateInstructionModal({
     try {
       const instructionData: Record<string, unknown> = {
         status: saveAs,
-        indicator_type: 'INFLUENCER DAN SMR',
+        indicator_type: 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT',
         sub_category: subCategory,
         target_type: targetType,
         target_upt: targetType === 'SPECIFIC' ? selectedUPTs : null,

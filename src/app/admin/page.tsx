@@ -415,7 +415,7 @@ export default function AdminDashboardPage() {
         if (sub.sub_category === 'MEDIA SOSIAL' && sub.skor_media_sosial !== null) {
           baseData['Skor Media Sosial'] = sub.skor_media_sosial;
         }
-      } else if (sub.indicator_type === 'INFLUENCER DAN SMR') {
+      } else if (sub.indicator_type === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT') {
         // Influencer/SMR fields
         baseData['Nomor Konten'] = sub.nomor_konten || '';
         baseData['Judul'] = sub.title || '';
@@ -452,10 +452,14 @@ export default function AdminDashboardPage() {
             baseData['YouTube 2 - Channel'] = sub.username_youtube_2 || '';
           }
           
-          // TikTok (1 account)
+          // TikTok (2 accounts)
           if (sub.link_tiktok) {
-            baseData['TikTok - Link'] = sub.link_tiktok;
-            baseData['TikTok - Username'] = sub.username_tiktok || '';
+            baseData['TikTok 1 - Link'] = sub.link_tiktok;
+            baseData['TikTok 1 - Username'] = sub.username_tiktok || '';
+          }
+          if (sub.link_tiktok_2) {
+            baseData['TikTok 2 - Link'] = sub.link_tiktok_2;
+            baseData['TikTok 2 - Username'] = sub.username_tiktok_2 || '';
           }
         } else if (sub.sub_category === 'SMR') {
           // Instagram (1 account)
@@ -480,8 +484,8 @@ export default function AdminDashboardPage() {
         // Standard fields for other indicator types
         baseData['Judul'] = sub.title || '';
         
-        // Check if it's KONTEN IN-CHANGE or KONTEN WAG (uses link_media)
-        if (sub.indicator_type === 'KONTEN IN-CHANGE' || sub.indicator_type === 'KONTEN WAG') {
+        // Check if it's KONTEN VIDEO IN-CHANGE or PENGELOLAAN KOMUNIKASI INTERNAL (uses link_media)
+        if (sub.indicator_type === 'KONTEN VIDEO IN-CHANGE' || sub.indicator_type === 'PENGELOLAAN KOMUNIKASI INTERNAL') {
           baseData['Link Media'] = sub.link_media || '';
         } else {
           // Other indicators use narasi and documentation_link

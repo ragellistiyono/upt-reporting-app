@@ -53,9 +53,11 @@ export default function SubmitReportPage() {
   const [linkYoutube2, setLinkYoutube2] = useState('');
   const [usernameYoutube2, setUsernameYoutube2] = useState('');
   
-  // Influencer state (TikTok - 1 field)
+  // Influencer state (TikTok - 2 fields)
   const [linkTiktok, setLinkTiktok] = useState('');
   const [usernameTiktok, setUsernameTiktok] = useState('');
+  const [linkTiktok2, setLinkTiktok2] = useState('');
+  const [usernameTiktok2, setUsernameTiktok2] = useState('');
   
   // SMR state (Facebook - 1 field)
   const [linkFacebook, setLinkFacebook] = useState('');
@@ -65,22 +67,29 @@ export default function SubmitReportPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showSkoringBlockedModal, setShowSkoringBlockedModal] = useState(false);
+
+  const isSkoringDateBlocked = () => {
+    const today = new Date();
+    const day = today.getDate();
+    return day === 17 || day === 18;
+  };
 
   // Check if sub-category should be shown
-  const showSubCategory = indicatorType === 'INFLUENCER DAN SMR';
-  const showSkoringMediaSubCategory = indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL';
+  const showSubCategory = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT';
+  const showSkoringMediaSubCategory = indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && !isSkoringDateBlocked();
   
   // Check which form fields to show
   const isSkoringMedia = indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL';
   const showSkorMediaMassa = isSkoringMedia && subCategory === 'MEDIA MASSA';
   const showSkorMediaSosial = isSkoringMedia && subCategory === 'MEDIA SOSIAL';
   
-  const isInfluencer = indicatorType === 'INFLUENCER DAN SMR' && subCategory === 'INFLUENCER';
-  const isSMR = indicatorType === 'INFLUENCER DAN SMR' && subCategory === 'SMR';
+  const isInfluencer = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT' && subCategory === 'INFLUENCER';
+  const isSMR = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT' && subCategory === 'SMR';
   
-  // KONTEN IN-CHANGE and KONTEN WAG use link_media instead of narasi + documentation_link
-  const isKontenInChange = indicatorType === 'KONTEN IN-CHANGE';
-  const isKontenWAG = indicatorType === 'KONTEN WAG';
+  // KONTEN VIDEO IN-CHANGE and PENGELOLAAN KOMUNIKASI INTERNAL use link_media instead of narasi + documentation_link
+  const isKontenInChange = indicatorType === 'KONTEN VIDEO IN-CHANGE';
+  const isKontenWAG = indicatorType === 'PENGELOLAAN KOMUNIKASI INTERNAL';
   const showLinkMedia = isKontenInChange || isKontenWAG;
   
   const showStandardFields = !isSkoringMedia && !isInfluencer && !isSMR && !showLinkMedia;
@@ -116,7 +125,8 @@ export default function SubmitReportPage() {
       { value: usernameTwitter2, name: 'Username Twitter 2' },
       { value: usernameYoutube1, name: 'Username/Channel YouTube 1' },
       { value: usernameYoutube2, name: 'Username/Channel YouTube 2' },
-      { value: usernameTiktok, name: 'Username TikTok' },
+      { value: usernameTiktok, name: 'Username TikTok 1' },
+      { value: usernameTiktok2, name: 'Username TikTok 2' },
       { value: usernameFacebook, name: 'Username/Page Facebook' },
     ];
 
@@ -156,7 +166,7 @@ export default function SubmitReportPage() {
        
 
       const hasAnySocialMedia = isInfluencer
-        ? (linkInstagram1 || linkInstagram2 || linkTwitter1 || linkTwitter2 || linkYoutube1 || linkYoutube2 || linkTiktok)
+        ? (linkInstagram1 || linkInstagram2 || linkTwitter1 || linkTwitter2 || linkYoutube1 || linkYoutube2 || linkTiktok || linkTiktok2)
         : (linkInstagram1 || linkFacebook || linkTwitter1);
 
       if (!hasAnySocialMedia) {
@@ -164,7 +174,7 @@ export default function SubmitReportPage() {
         return;
       }
     } else if (showLinkMedia) {
-      // Validation for KONTEN IN-CHANGE and KONTEN WAG
+      // Validation for KONTEN VIDEO IN-CHANGE and PENGELOLAAN KOMUNIKASI INTERNAL
       if (title.length < VALIDATION_RULES.TITLE.MIN_LENGTH) {
         setError(`Judul minimal ${VALIDATION_RULES.TITLE.MIN_LENGTH} karakter`);
         return;
@@ -235,6 +245,8 @@ export default function SubmitReportPage() {
         submissionData.username_youtube_2 = usernameYoutube2.trim() || null;
         submissionData.link_tiktok = linkTiktok.trim() || null;
         submissionData.username_tiktok = usernameTiktok.trim() || null;
+        submissionData.link_tiktok_2 = linkTiktok2.trim() || null;
+        submissionData.username_tiktok_2 = usernameTiktok2.trim() || null;
         submissionData.link_facebook = null;
         submissionData.username_facebook = null;
         submissionData.skor_media_massa = null;
@@ -261,10 +273,12 @@ export default function SubmitReportPage() {
         submissionData.username_youtube_2 = null;
         submissionData.link_tiktok = null;
         submissionData.username_tiktok = null;
+        submissionData.link_tiktok_2 = null;
+        submissionData.username_tiktok_2 = null;
         submissionData.skor_media_massa = null;
         submissionData.skor_media_sosial = null;
       } else if (showLinkMedia) {
-        // KONTEN IN-CHANGE and KONTEN WAG fields
+        // KONTEN VIDEO IN-CHANGE and PENGELOLAAN KOMUNIKASI INTERNAL fields
         submissionData.sub_category = null;
         submissionData.title = title.trim();
         submissionData.narasi = null;
@@ -318,6 +332,8 @@ export default function SubmitReportPage() {
       setUsernameYoutube2('');
       setLinkTiktok('');
       setUsernameTiktok('');
+      setLinkTiktok2('');
+      setUsernameTiktok2('');
       setLinkFacebook('');
       setUsernameFacebook('');
 
@@ -430,7 +446,14 @@ export default function SubmitReportPage() {
                 id="indicator_type"
                 value={indicatorType}
                 onChange={(e) => {
-                  setIndicatorType(e.target.value as IndicatorType);
+                  const selected = e.target.value as IndicatorType;
+                  if (selected === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && isSkoringDateBlocked()) {
+                    setShowSkoringBlockedModal(true);
+                    setIndicatorType('');
+                    setSubCategory('');
+                    return;
+                  }
+                  setIndicatorType(selected);
                   setSubCategory('');
                 }}
                 required
@@ -446,7 +469,7 @@ export default function SubmitReportPage() {
               </select>
             </div>
 
-            {/* Sub-Category (for INFLUENCER DAN SMR) */}
+            {/* Sub-Category (for PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT) */}
             {showSubCategory && (
               <div className="animate-slideDown">
                 <label htmlFor="sub_category" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -468,7 +491,7 @@ export default function SubmitReportPage() {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Diperlukan untuk indikator INFLUENCER DAN SMR
+                  Diperlukan untuk indikator Pengelolaan Influencer Media Sosial Unit
                 </p>
               </div>
             )}
@@ -748,7 +771,7 @@ export default function SubmitReportPage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-300 mb-1">Link TikTok</label>
+                      <label className="block text-sm text-gray-300 mb-1">Link TikTok 1</label>
                       <input
                         type="url"
                         value={linkTiktok}
@@ -759,11 +782,36 @@ export default function SubmitReportPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-300 mb-1">Username</label>
+                      <label className="block text-sm text-gray-300 mb-1">Username 1</label>
                       <input
                         type="text"
                         value={usernameTiktok}
                         onChange={(e) => setUsernameTiktok(e.target.value)}
+                        disabled={isSubmitting}
+                        placeholder="@username"
+                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-700 mt-4">
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-1">Link TikTok 2</label>
+                      <input
+                        type="url"
+                        value={linkTiktok2}
+                        onChange={(e) => setLinkTiktok2(e.target.value)}
+                        disabled={isSubmitting}
+                        placeholder="https://tiktok.com/..."
+                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-1">Username 2</label>
+                      <input
+                        type="text"
+                        value={usernameTiktok2}
+                        onChange={(e) => setUsernameTiktok2(e.target.value)}
                         disabled={isSubmitting}
                         placeholder="@username"
                         className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
@@ -931,7 +979,7 @@ export default function SubmitReportPage() {
               </div>
             )}
 
-            {/* KONTEN IN-CHANGE & KONTEN WAG Fields: Title */}
+            {/* KONTEN VIDEO IN-CHANGE & PENGELOLAAN KOMUNIKASI INTERNAL Fields: Title */}
             {showLinkMedia && (
               <div className="animate-slideDown">
                 <label htmlFor="title_link_media" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -955,7 +1003,7 @@ export default function SubmitReportPage() {
               </div>
             )}
 
-            {/* KONTEN IN-CHANGE & KONTEN WAG Fields: Link Media */}
+            {/* KONTEN VIDEO IN-CHANGE & PENGELOLAAN KOMUNIKASI INTERNAL Fields: Link Media */}
             {showLinkMedia && (
               <div className="animate-slideDown">
                 <label htmlFor="link_media" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1103,6 +1151,40 @@ export default function SubmitReportPage() {
           </p>
         </div>
       </main>
+
+      {/* Skoring Media Blocked Modal */}
+      {showSkoringBlockedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Pemberitahuan</h3>
+            </div>
+            <div className="space-y-3 mb-6">
+              <p className="text-gray-700 text-center">
+                Waktu sudah menunjukkan batas waktu upload data
+              </p>
+              <p className="text-white text-center font-semibold bg-red-500 rounded-lg px-4 py-2">
+                Anda sudah tidak bisa mengupload data sekarang lagi
+              </p>
+              <p className="text-gray-700 text-center">
+                maksimal upload jam 08.00 WIB
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSkoringBlockedModal(false)}
+              className="w-full bg-pln-blue hover:bg-pln-blue-dark text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200"
+            >
+              Ok, Mengerti
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

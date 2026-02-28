@@ -10,20 +10,20 @@
 
 export const INDICATOR_TYPES = [
   'PUBLIKASI SIARAN PERS',
-  'PRODUKSI KONTEN',
-  'INFLUENCER DAN SMR',
-  'KONTEN IN-CHANGE',
-  'KONTEN WAG',
-  'SKORING MEDIA MASSA DAN MEDIA SOSIAL'
+  'PRODUKSI KONTEN MEDIA SOSIAL UNIT',
+  'SKORING MEDIA MASSA DAN MEDIA SOSIAL',
+  'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT',
+  'KONTEN VIDEO IN-CHANGE',
+  'PENGELOLAAN KOMUNIKASI INTERNAL'
 ] as const;
 
 export const INDICATOR_TYPE_LABELS: Record<string, string> = {
   'PUBLIKASI SIARAN PERS': 'Publikasi Siaran Pers',
-  'PRODUKSI KONTEN': 'Produksi Konten',
-  'INFLUENCER DAN SMR': 'Influencer dan SMR',
-  'KONTEN IN-CHANGE': 'Konten In-Change',
-  'KONTEN WAG': 'Konten WAG',
-  'SKORING MEDIA MASSA DAN MEDIA SOSIAL': 'Skoring Media Massa dan Media Sosial'
+  'PRODUKSI KONTEN MEDIA SOSIAL UNIT': 'Produksi Konten Media Sosial Unit',
+  'SKORING MEDIA MASSA DAN MEDIA SOSIAL': 'Skoring Media Massa dan Media Sosial',
+  'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT': 'Pengelolaan Influencer Media Sosial Unit',
+  'KONTEN VIDEO IN-CHANGE': 'Konten Video In-Change',
+  'PENGELOLAAN KOMUNIKASI INTERNAL': 'Pengelolaan Komunikasi Internal'
 };
 
 // ============================================================================
@@ -46,7 +46,7 @@ export const MONTHS = [
 ] as const;
 
 // ============================================================================
-// Sub-Categories (for INFLUENCER DAN SMR)
+// Sub-Categories (for PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT)
 // ============================================================================
 
 export const SUB_CATEGORIES = [
@@ -95,11 +95,11 @@ export const UPT_LIST = UPT_NAMES;
 
 export const INDICATOR_CATEGORIES = [
   { value: 'PUBLIKASI SIARAN PERS', label: 'Publikasi Siaran Pers' },
-  { value: 'PRODUKSI KONTEN', label: 'Produksi Konten' },
-  { value: 'INFLUENCER DAN SMR', label: 'Influencer dan SMR' },
-  { value: 'KONTEN IN-CHANGE', label: 'Konten In-Change' },
-  { value: 'KONTEN WAG', label: 'Konten WAG' },
-  { value: 'SKORING MEDIA MASSA DAN MEDIA SOSIAL', label: 'Skoring Media Massa dan Media Sosial' }
+  { value: 'PRODUKSI KONTEN MEDIA SOSIAL UNIT', label: 'Produksi Konten Media Sosial Unit' },
+  { value: 'SKORING MEDIA MASSA DAN MEDIA SOSIAL', label: 'Skoring Media Massa dan Media Sosial' },
+  { value: 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT', label: 'Pengelolaan Influencer Media Sosial Unit' },
+  { value: 'KONTEN VIDEO IN-CHANGE', label: 'Konten Video In-Change' },
+  { value: 'PENGELOLAAN KOMUNIKASI INTERNAL', label: 'Pengelolaan Komunikasi Internal' }
 ] as const;
 
 // ============================================================================
@@ -201,7 +201,7 @@ export const MESSAGES = {
   ERROR: {
     GENERIC: 'Terjadi kesalahan. Silakan coba lagi.',
     UNAUTHORIZED: 'Anda tidak memiliki akses ke halaman ini.',
-    INVALID_CREDENTIALS: 'Email atau password salah.',
+    INVALID_CREDENTIALS: 'Username atau password salah.',
     NETWORK: 'Koneksi bermasalah. Periksa internet Anda.',
     REQUIRED_FIELD: 'Field ini wajib diisi.',
     INVALID_URL: 'URL tidak valid. Harus dimulai dengan http:// atau https://',

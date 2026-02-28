@@ -30,11 +30,11 @@ export interface AppwriteUser {
 
 export const INDICATOR_TYPES = [
   'PUBLIKASI SIARAN PERS',
-  'PRODUKSI KONTEN',
-  'INFLUENCER DAN SMR',
-  'KONTEN IN-CHANGE',
-  'KONTEN WAG',
-  'SKORING MEDIA MASSA DAN MEDIA SOSIAL'
+  'PRODUKSI KONTEN MEDIA SOSIAL UNIT',
+  'SKORING MEDIA MASSA DAN MEDIA SOSIAL',
+  'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT',
+  'KONTEN VIDEO IN-CHANGE',
+  'PENGELOLAAN KOMUNIKASI INTERNAL'
 ] as const;
 
 export type IndicatorType = typeof INDICATOR_TYPES[number];
@@ -84,7 +84,7 @@ export interface Submission {
   title?: string;
   narasi?: string;
   documentation_link?: string;
-  link_media?: string | null; // For KONTEN IN-CHANGE and KONTEN WAG
+  link_media?: string | null; // For KONTEN VIDEO IN-CHANGE and PENGELOLAAN KOMUNIKASI INTERNAL
   // Skoring Media fields
   skor_media_massa?: number | null;
   skor_media_sosial?: number | null;
@@ -105,9 +105,11 @@ export interface Submission {
   username_youtube_1?: string | null;
   link_youtube_2?: string | null;
   username_youtube_2?: string | null;
-  // Influencer fields (TikTok - 1 field)
+  // Influencer fields (TikTok - 2 fields)
   link_tiktok?: string | null;
   username_tiktok?: string | null;
+  link_tiktok_2?: string | null;
+  username_tiktok_2?: string | null;
   // SMR fields (Facebook - 1 field)
   link_facebook?: string | null;
   username_facebook?: string | null;
@@ -132,7 +134,7 @@ export interface Instruction {
   $updatedAt: string;
   $permissions: string[];
   status: InstructionStatus;
-  indicator_type: 'INFLUENCER DAN SMR'; // Only for INFLUENCER/SMR
+  indicator_type: 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT'; // Only for INFLUENCER/SMR
   sub_category: 'INFLUENCER' | 'SMR';
   target_type: 'ALL' | 'SPECIFIC'; // Broadcast or specific UPT
   target_upt?: string[]; // Array of UPT names (if SPECIFIC)
@@ -238,6 +240,8 @@ export interface SubmissionFormData {
   username_youtube_2?: string;
   link_tiktok?: string;
   username_tiktok?: string;
+  link_tiktok_2?: string;
+  username_tiktok_2?: string;
   link_facebook?: string;
   username_facebook?: string;
 }
@@ -333,6 +337,8 @@ export interface FormErrors {
   username_youtube_2?: string;
   link_tiktok?: string;
   username_tiktok?: string;
+  link_tiktok_2?: string;
+  username_tiktok_2?: string;
   link_facebook?: string;
   username_facebook?: string;
 }
