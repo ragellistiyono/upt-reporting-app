@@ -60,7 +60,7 @@ function question(query) {
 async function createAdminUser() {
     console.log('\n📋 Creating Admin User...\n');
 
-    const email = await question('Admin Email (e.g., admin@pln.com): ');
+    const email = await question('Admin Email (e.g., [EMAIL_ADDRESS]): ');
     const password = await question('Admin Password: ');
     const name = await question('Admin Name (optional, press Enter to skip): ') || 'Admin User';
 
