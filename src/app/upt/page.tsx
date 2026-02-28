@@ -249,7 +249,15 @@ export default function UPTDashboardPage() {
     
     filteredByIndicator.forEach((sub) => {
       const indicator = sub.indicator_type;
-      submissionsByIndicator[indicator] = (submissionsByIndicator[indicator] || 0) + 1;
+      
+      // For SKORING MEDIA MASSA DAN MEDIA SOSIAL, use skor_media_sosial as realisasi
+      if (indicator === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL') {
+        if (sub.skor_media_sosial && typeof sub.skor_media_sosial === 'number') {
+          submissionsByIndicator[indicator] = (submissionsByIndicator[indicator] || 0) + sub.skor_media_sosial;
+        }
+      } else {
+        submissionsByIndicator[indicator] = (submissionsByIndicator[indicator] || 0) + 1;
+      }
     });
 
     const targetsByIndicator: Record<string, number> = {};

@@ -128,6 +128,9 @@ export const APPWRITE_CONFIG = {
     INSTRUCTION_READS: 'instruction_reads',
     TARGETS: 'targets',
     PERFORMANCE_TARGETS: 'performance_targets'
+  },
+  STORAGE: {
+    SKORING_MEDIA_FILES: 'skoring_media_files'
   }
 } as const;
 

@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const dynamic = 'force-dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { databases } from '@/lib/appwrite';
+import { databases, storage } from '@/lib/appwrite';
 import { APPWRITE_CONFIG, INDICATOR_TYPES, UPT_NAMES, INDICATOR_TYPE_LABELS, SUB_CATEGORY_LABELS } from '@/lib/constants';
 import { Query } from 'appwrite';
 import type { Submission, Instruction, Target } from '@/types';
@@ -353,6 +353,43 @@ export default function AdminDashboardPage() {
         header: 'Dokumentasi',
         cell: (info) => {
           const link = info.getValue();
+          const row = info.row.original;
+          
+          // For Media Sosial with file_id, show file download
+          if (row.indicator_type === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && row.sub_category === 'MEDIA SOSIAL' && row.file_id) {
+            const downloadUrl = storage.getFileDownload(
+              APPWRITE_CONFIG.STORAGE.SKORING_MEDIA_FILES,
+              row.file_id
+            );
+            return (
+              <a
+                href={downloadUrl.toString()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 transition-colors underline"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download
+              </a>
+            );
+          }
+          
+          // For Media Massa with link_publikasi
+          if (row.indicator_type === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && row.sub_category === 'MEDIA MASSA' && row.link_publikasi) {
+            return (
+              <a
+                href={row.link_publikasi}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-pln-blue hover:text-pln-blue-dark transition-colors underline"
+              >
+                Lihat
+              </a>
+            );
+          }
+          
           return link ? (
             <a
               href={link}
@@ -409,11 +446,14 @@ export default function AdminDashboardPage() {
       // Check indicator type and add appropriate fields
       if (sub.indicator_type === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL') {
         // Skoring Media fields
-        if (sub.sub_category === 'MEDIA MASSA' && sub.skor_media_massa !== null) {
-          baseData['Skor Media Massa'] = sub.skor_media_massa;
+        if (sub.sub_category === 'MEDIA MASSA') {
+          baseData['Judul'] = sub.title || '';
+          baseData['Link Publikasi'] = sub.link_publikasi || '';
+          baseData['Nama Media'] = sub.nama_media || '';
         }
         if (sub.sub_category === 'MEDIA SOSIAL' && sub.skor_media_sosial !== null) {
-          baseData['Skor Media Sosial'] = sub.skor_media_sosial;
+          baseData['Total Score'] = sub.skor_media_sosial;
+          baseData['File ID'] = sub.file_id || '';
         }
       } else if (sub.indicator_type === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT') {
         // Influencer/SMR fields

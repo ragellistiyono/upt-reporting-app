@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { databases, ID } from '@/lib/appwrite';
+import { databases, storage, ID } from '@/lib/appwrite';
 import { 
   APPWRITE_CONFIG, 
   INDICATOR_TYPES, 
@@ -14,6 +14,7 @@ import {
   MESSAGES 
 } from '@/lib/constants';
 import type { IndicatorType, SubCategory, SkoringMediaSubCategory } from '@/types';
+import * as XLSX from 'xlsx';
 
 export default function SubmitReportPage() {
   const { user, uptName, isLoading, role } = useAuth();
@@ -28,9 +29,16 @@ export default function SubmitReportPage() {
   const [documentationLink, setDocumentationLink] = useState('');
   const [linkMedia, setLinkMedia] = useState('');
   
-  // Skoring Media state
-  const [skorMediaMassa, setSkorMediaMassa] = useState<number | ''>('');
-  const [skorMediaSosial, setSkorMediaSosial] = useState<number | ''>('');
+  // Skoring Media Massa state
+  const [linkPublikasi, setLinkPublikasi] = useState('');
+  const [namaMedia, setNamaMedia] = useState('');
+  
+  // Skoring Media Sosial state (file upload)
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [parsedTotalScore, setParsedTotalScore] = useState<number | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
+  
+  // Legacy Skoring Media state (kept for compatibility)
   
   // Influencer/SMR common state
   const [nomorKonten, setNomorKonten] = useState('');
@@ -144,14 +152,30 @@ export default function SubmitReportPage() {
         return;
       }
 
-      if (subCategory === 'MEDIA MASSA' && (!skorMediaMassa || skorMediaMassa <= 0)) {
-        setError('Masukkan nilai Skor Media Massa yang valid (harus lebih dari 0)');
-        return;
+      if (subCategory === 'MEDIA MASSA') {
+        if (!title || title.trim().length < VALIDATION_RULES.TITLE.MIN_LENGTH) {
+          setError(`Judul minimal ${VALIDATION_RULES.TITLE.MIN_LENGTH} karakter`);
+          return;
+        }
+        if (!linkPublikasi || !VALIDATION_RULES.DOCUMENTATION_LINK.PATTERN.test(linkPublikasi)) {
+          setError('Link Publikasi harus berupa URL yang valid (dimulai dengan http:// atau https://)');
+          return;
+        }
+        if (!namaMedia || namaMedia.trim().length === 0) {
+          setError('Nama Media wajib diisi');
+          return;
+        }
       }
 
-      if (subCategory === 'MEDIA SOSIAL' && (!skorMediaSosial || skorMediaSosial <= 0)) {
-        setError('Masukkan nilai Skor Media Sosial yang valid (harus lebih dari 0)');
-        return;
+      if (subCategory === 'MEDIA SOSIAL') {
+        if (!excelFile) {
+          setError('Silakan upload file Excel template yang sudah diisi');
+          return;
+        }
+        if (parsedTotalScore === null || parsedTotalScore <= 0) {
+          setError('Total Score tidak ditemukan atau tidak valid dalam file Excel. Pastikan file yang di-upload sudah benar.');
+          return;
+        }
       }
     } else if (isInfluencer || isSMR) {
       if (!nomorKonten || nomorKonten.trim().length === 0) {
@@ -216,13 +240,29 @@ export default function SubmitReportPage() {
       if (isSkoringMedia) {
         submissionData.sub_category = subCategory;
         if (subCategory === 'MEDIA MASSA') {
-          submissionData.skor_media_massa = Number(skorMediaMassa);
-          submissionData.skor_media_sosial = null;
-        } else if (subCategory === 'MEDIA SOSIAL') {
-          submissionData.skor_media_sosial = Number(skorMediaSosial);
+          submissionData.title = title.trim();
+          submissionData.link_publikasi = linkPublikasi.trim();
+          submissionData.nama_media = namaMedia.trim();
           submissionData.skor_media_massa = null;
+          submissionData.skor_media_sosial = null;
+          submissionData.file_id = null;
+        } else if (subCategory === 'MEDIA SOSIAL') {
+          // Upload file to Appwrite Storage
+          setUploadProgress('Mengupload file...');
+          const uploadedFile = await storage.createFile(
+            APPWRITE_CONFIG.STORAGE.SKORING_MEDIA_FILES,
+            ID.unique(),
+            excelFile!
+          );
+          setUploadProgress('File berhasil diupload!');
+          
+          submissionData.skor_media_sosial = parsedTotalScore;
+          submissionData.skor_media_massa = null;
+          submissionData.file_id = uploadedFile.$id;
+          submissionData.title = null;
+          submissionData.link_publikasi = null;
+          submissionData.nama_media = null;
         }
-        submissionData.title = null;
         submissionData.narasi = null;
         submissionData.documentation_link = null;
       } else if (isInfluencer) {
@@ -315,8 +355,12 @@ export default function SubmitReportPage() {
       setNarasi('');
       setDocumentationLink('');
       setLinkMedia('');
-      setSkorMediaMassa('');
-      setSkorMediaSosial('');
+
+      setLinkPublikasi('');
+      setNamaMedia('');
+      setExcelFile(null);
+      setParsedTotalScore(null);
+      setUploadProgress('');
       setNomorKonten('');
       setLinkInstagram1('');
       setUsernameInstagram1('');
@@ -345,8 +389,10 @@ export default function SubmitReportPage() {
     } catch (err) {
       console.error('Submission error:', err);
       setError('Gagal mengirim laporan. Silakan coba lagi.');
+      setUploadProgress('');
     } finally {
       setIsSubmitting(false);
+      setUploadProgress('');
     }
   };
 
@@ -507,8 +553,13 @@ export default function SubmitReportPage() {
                   value={subCategory}
                   onChange={(e) => {
                     setSubCategory(e.target.value as SkoringMediaSubCategory);
-                    setSkorMediaMassa('');
-                    setSkorMediaSosial('');
+
+                    setLinkPublikasi('');
+                    setNamaMedia('');
+                    setTitle('');
+                    setExcelFile(null);
+                    setParsedTotalScore(null);
+                    setUploadProgress('');
                   }}
                   required={showSkoringMediaSubCategory}
                   disabled={isSubmitting}
@@ -931,51 +982,239 @@ export default function SubmitReportPage() {
               </div>
             )}
 
-            {/* Skor Media Massa */}
+            {/* Media Massa Form Fields */}
             {showSkorMediaMassa && (
-              <div className="animate-slideDown">
-                <label htmlFor="skor_media_massa" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Skor Media Massa <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="skor_media_massa"
-                  type="number"
-                  value={skorMediaMassa}
-                  onChange={(e) => setSkorMediaMassa(e.target.value ? Number(e.target.value) : '')}
-                  required={showSkorMediaMassa}
-                  min="0"
-                  step="0.01"
-                  disabled={isSubmitting}
-                  placeholder="Contoh: 570000"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Masukkan nilai skor media massa (contoh: 570000)
-                </p>
+              <div className="animate-slideDown space-y-4">
+                <div className="bg-linear-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
+                  <h4 className="text-blue-700 font-semibold mb-4 flex items-center gap-2">
+                    📰 Data Media Massa
+                  </h4>
+                  
+                  {/* Judul */}
+                  <div className="mb-4">
+                    <label htmlFor="title_media_massa" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Judul <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="title_media_massa"
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required={showSkorMediaMassa}
+                      minLength={VALIDATION_RULES.TITLE.MIN_LENGTH}
+                      maxLength={VALIDATION_RULES.TITLE.MAX_LENGTH}
+                      disabled={isSubmitting}
+                      placeholder="Masukkan judul berita/artikel..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Minimal {VALIDATION_RULES.TITLE.MIN_LENGTH} karakter | Saat ini: {title.length}
+                    </p>
+                  </div>
+
+                  {/* Link Publikasi */}
+                  <div className="mb-4">
+                    <label htmlFor="link_publikasi" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Link Publikasi <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                      </span>
+                      <input
+                        id="link_publikasi"
+                        type="url"
+                        value={linkPublikasi}
+                        onChange={(e) => setLinkPublikasi(e.target.value)}
+                        required={showSkorMediaMassa}
+                        disabled={isSubmitting}
+                        placeholder="https://www.contoh-media.com/artikel..."
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Link harus dimulai dengan http:// atau https://
+                    </p>
+                  </div>
+
+                  {/* Nama Media */}
+                  <div>
+                    <label htmlFor="nama_media" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Nama Media <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="nama_media"
+                      type="text"
+                      value={namaMedia}
+                      onChange={(e) => setNamaMedia(e.target.value)}
+                      required={showSkorMediaMassa}
+                      disabled={isSubmitting}
+                      placeholder="Contoh: Kompas, Detik, Tribun..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Skor Media Sosial */}
+            {/* Media Sosial Form Fields (Template Download + File Upload) */}
             {showSkorMediaSosial && (
-              <div className="animate-slideDown">
-                <label htmlFor="skor_media_sosial" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Skor Media Sosial <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="skor_media_sosial"
-                  type="number"
-                  value={skorMediaSosial}
-                  onChange={(e) => setSkorMediaSosial(e.target.value ? Number(e.target.value) : '')}
-                  required={showSkorMediaSosial}
-                  min="0"
-                  step="0.01"
-                  disabled={isSubmitting}
-                  placeholder="Contoh: 5000"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Masukkan nilai skor media sosial (contoh: 5000)
-                </p>
+              <div className="animate-slideDown space-y-4">
+                <div className="bg-linear-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                  <h4 className="text-green-700 font-semibold mb-4 flex items-center gap-2">
+                    📊 Skoring Media Sosial
+                  </h4>
+
+                  {/* Step 1: Download Template */}
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Download Template
+                      </label>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-3 ml-8">
+                      Download file template Excel, isi data sesuai format yang ditentukan.
+                    </p>
+                    <a
+                      href="/template_skoring_media_sosial.xlsx"
+                      download="TEMPLATE SKORING MEDSOS UPT.xlsx"
+                      className="ml-8 inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors text-sm"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Download Template Excel
+                    </a>
+                    <p className="text-xs text-gray-500 mt-2 ml-8">
+                      💡 Setelah download, buka sheet <strong>&quot;{uptName?.toUpperCase()}&quot;</strong> dan isi data di kolom <strong>J-Q</strong> (No, Kategori, Tanggal, Judul, Link, Username, Platform, Kategori Media).
+                    </p>
+                  </div>
+
+                  {/* Step 2: Upload File */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                      <label htmlFor="excel_upload" className="block text-sm font-semibold text-gray-700">
+                        Upload File Excel <span className="text-red-500">*</span>
+                      </label>
+                    </div>
+                    <p className="text-sm text-gray-500 mb-3 ml-8">
+                      Upload file template yang sudah diisi lengkap. Total Score akan otomatis terbaca dari sheet <strong>&quot;{uptName?.toUpperCase()}&quot;</strong>.
+                    </p>
+                    <div className="ml-8">
+                      <input
+                        id="excel_upload"
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setExcelFile(file);
+                            // Parse Excel to extract Total Score from the UPT-specific sheet
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              try {
+                                const data = new Uint8Array(event.target?.result as ArrayBuffer);
+                                const workbook = XLSX.read(data, { type: 'array' });
+                                
+                                // Find the sheet matching the logged-in UPT name (case-insensitive)
+                                const uptSheetName = workbook.SheetNames.find(
+                                  (name) => name.toLowerCase() === uptName?.toLowerCase()
+                                );
+                                
+                                if (!uptSheetName) {
+                                  setParsedTotalScore(null);
+                                  setError(`Sheet "${uptName?.toUpperCase()}" tidak ditemukan dalam file Excel. Pastikan file yang di-upload adalah template yang benar.`);
+                                  return;
+                                }
+                                
+                                const uptSheet = workbook.Sheets[uptSheetName];
+                                let totalScore: number | null = null;
+                                
+                                // Method 1: Read cell D13 directly (known position of Total Score)
+                                const cellD13 = uptSheet['D13'];
+                                if (cellD13 && typeof cellD13.v === 'number') {
+                                  totalScore = cellD13.v;
+                                }
+                                
+                                // Method 2: Fallback - search for "Total Score" label
+                                if (totalScore === null) {
+                                  const sheetData = XLSX.utils.sheet_to_json<(string | number | null)[]>(uptSheet, { header: 1 });
+                                  for (const row of sheetData) {
+                                    if (!row || !Array.isArray(row)) continue;
+                                    for (let colIdx = 0; colIdx < row.length; colIdx++) {
+                                      const cellValue = row[colIdx];
+                                      if (typeof cellValue === 'string' && cellValue.toLowerCase().trim() === 'total score') {
+                                        for (let searchIdx = colIdx + 1; searchIdx < row.length; searchIdx++) {
+                                          if (typeof row[searchIdx] === 'number') {
+                                            totalScore = row[searchIdx] as number;
+                                            break;
+                                          }
+                                        }
+                                        if (totalScore !== null) break;
+                                      }
+                                    }
+                                    if (totalScore !== null) break;
+                                  }
+                                }
+                                
+                                if (totalScore !== null) {
+                                  setParsedTotalScore(totalScore);
+                                } else {
+                                  setParsedTotalScore(null);
+                                  setError('Total Score tidak ditemukan dalam file Excel. Pastikan format file sesuai template.');
+                                }
+                              } catch {
+                                setParsedTotalScore(null);
+                                setError('Gagal membaca file Excel. Pastikan file tidak corrupt.');
+                              }
+                            };
+                            reader.readAsArrayBuffer(file);
+                          } else {
+                            setExcelFile(null);
+                            setParsedTotalScore(null);
+                          }
+                        }}
+                        disabled={isSubmitting}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200"
+                      />
+                      
+                      {/* Show parsed Total Score */}
+                      {excelFile && parsedTotalScore !== null && (
+                        <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="text-sm font-medium text-green-700">
+                              Total Score ditemukan: <span className="text-lg font-bold">{parsedTotalScore}</span>
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {excelFile && parsedTotalScore === null && (
+                        <div className="mt-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <span className="text-sm text-yellow-700">
+                              Total Score tidak ditemukan. Pastikan file sesuai template.
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {uploadProgress && (
+                        <p className="text-sm text-blue-600 mt-2 font-medium">{uploadProgress}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

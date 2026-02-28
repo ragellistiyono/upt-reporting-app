@@ -88,6 +88,11 @@ export interface Submission {
   // Skoring Media fields
   skor_media_massa?: number | null;
   skor_media_sosial?: number | null;
+  // Skoring Media Massa fields
+  link_publikasi?: string | null;
+  nama_media?: string | null;
+  // Skoring Media Sosial file upload
+  file_id?: string | null; // Appwrite Storage file ID
   // Influencer/SMR common fields
   nomor_konten?: string | null;
   // Influencer fields (Instagram - 2 fields)
@@ -223,6 +228,11 @@ export interface SubmissionFormData {
   // Skoring Media fields
   skor_media_massa?: number | '';
   skor_media_sosial?: number | '';
+  // Skoring Media Massa fields
+  link_publikasi?: string;
+  nama_media?: string;
+  // Skoring Media Sosial file upload
+  file_id?: string;
   // Influencer/SMR common fields
   nomor_konten?: string;
   // Influencer/SMR social media fields
@@ -261,6 +271,11 @@ export interface CreateSubmissionPayload {
   // New fields for Skoring Media
   skor_media_massa?: number | null;
   skor_media_sosial?: number | null;
+  // Skoring Media Massa fields
+  link_publikasi?: string | null;
+  nama_media?: string | null;
+  // Skoring Media Sosial file upload
+  file_id?: string | null;
   submitted_by_user: string;
 }
 
