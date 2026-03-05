@@ -21,10 +21,53 @@ export const INDICATOR_TYPE_LABELS: Record<string, string> = {
   'PUBLIKASI SIARAN PERS': 'Publikasi Siaran Pers',
   'PRODUKSI KONTEN MEDIA SOSIAL UNIT': 'Produksi Konten Media Sosial Unit',
   'SKORING MEDIA MASSA DAN MEDIA SOSIAL': 'Skoring Media Massa dan Media Sosial',
+  'SKORING MEDIA MASSA': 'Media Massa',
+  'SKORING MEDIA SOSIAL': 'Media Sosial',
   'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT': 'Pengelolaan Influencer Media Sosial Unit',
   'KONTEN VIDEO IN-CHANGE': 'Konten Video In-Change',
   'PENGELOLAAN KOMUNIKASI INTERNAL': 'Pengelolaan Komunikasi Internal'
 };
+
+// ============================================================================
+// Admin Target Indicator Types (7 items — split Media Massa & Media Sosial)
+// Used ONLY in admin target modal and admin dashboard chart
+// ============================================================================
+
+export const ADMIN_TARGET_INDICATOR_TYPES = [
+  'PUBLIKASI SIARAN PERS',
+  'PRODUKSI KONTEN MEDIA SOSIAL UNIT',
+  'SKORING MEDIA MASSA',
+  'SKORING MEDIA SOSIAL',
+  'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT',
+  'KONTEN VIDEO IN-CHANGE',
+  'PENGELOLAAN KOMUNIKASI INTERNAL'
+] as const;
+
+export type AdminTargetIndicatorType = typeof ADMIN_TARGET_INDICATOR_TYPES[number];
+
+export const ADMIN_TARGET_INDICATOR_LABELS: Record<string, string> = {
+  'PUBLIKASI SIARAN PERS': 'Publikasi Siaran Pers',
+  'PRODUKSI KONTEN MEDIA SOSIAL UNIT': 'Produksi Konten Media Sosial Unit',
+  'SKORING MEDIA MASSA': 'Media Massa',
+  'SKORING MEDIA SOSIAL': 'Media Sosial',
+  'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT': 'Pengelolaan Influencer Media Sosial Unit',
+  'KONTEN VIDEO IN-CHANGE': 'Konten Video In-Change',
+  'PENGELOLAAN KOMUNIKASI INTERNAL': 'Pengelolaan Komunikasi Internal'
+};
+
+// ============================================================================
+// Chart Indicator Config (for admin dashboard grouped bar chart)
+// ============================================================================
+
+export const CHART_INDICATOR_CONFIG = [
+  { key: 'ind1', label: 'Ind 1', fullLabel: 'Publikasi Siaran Pers', color: '#4472C4', indicatorType: 'PUBLIKASI SIARAN PERS', subCategory: null },
+  { key: 'ind2', label: 'Ind 2', fullLabel: 'Produksi Konten Media Sosial Unit', color: '#ED7D31', indicatorType: 'PRODUKSI KONTEN MEDIA SOSIAL UNIT', subCategory: null },
+  { key: 'ind3a', label: 'Ind 3a', fullLabel: 'Media Massa', color: '#A5A5A5', indicatorType: 'SKORING MEDIA MASSA DAN MEDIA SOSIAL', subCategory: 'MEDIA MASSA' },
+  { key: 'ind3b', label: 'Ind 3b', fullLabel: 'Media Sosial', color: '#FFC000', indicatorType: 'SKORING MEDIA MASSA DAN MEDIA SOSIAL', subCategory: 'MEDIA SOSIAL' },
+  { key: 'ind4', label: 'Ind 4', fullLabel: 'Pengelolaan Influencer Media Sosial Unit', color: '#5B9BD5', indicatorType: 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT', subCategory: null },
+  { key: 'ind5', label: 'Ind 5', fullLabel: 'Konten Video In-Change', color: '#70AD47', indicatorType: 'KONTEN VIDEO IN-CHANGE', subCategory: null },
+  { key: 'ind6', label: 'Ind 6', fullLabel: 'Pengelolaan Komunikasi Internal', color: '#264478', indicatorType: 'PENGELOLAAN KOMUNIKASI INTERNAL', subCategory: null },
+] as const;
 
 // ============================================================================
 // Month Constants

@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { databases, ID } from '@/lib/appwrite';
 import { Query } from 'appwrite';
-import { APPWRITE_CONFIG, UPT_NAMES, INDICATOR_TYPES, INDICATOR_TYPE_LABELS, MONTHS } from '@/lib/constants';
-import type { Target, IndicatorType } from '@/types';
+import { APPWRITE_CONFIG, UPT_NAMES, ADMIN_TARGET_INDICATOR_TYPES, ADMIN_TARGET_INDICATOR_LABELS, MONTHS } from '@/lib/constants';
+import type { Target } from '@/types';
+import type { AdminTargetIndicatorType } from '@/lib/constants';
 
 interface ManageTargetsModalProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ export default function ManageTargetsModal({ isOpen, onClose, onSuccess }: Manag
   const currentMonth = new Date().getMonth() + 1;
   const currentSemester = currentMonth <= 6 ? 1 : 2;
 
-  const [selectedIndicator, setSelectedIndicator] = useState<IndicatorType | ''>('');
+  const [selectedIndicator, setSelectedIndicator] = useState<AdminTargetIndicatorType | ''>('');
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedPeriodType, setSelectedPeriodType] = useState<'semester' | 'month'>('semester');
   const [selectedSemester, setSelectedSemester] = useState<number>(currentSemester);
@@ -255,13 +256,13 @@ export default function ManageTargetsModal({ isOpen, onClose, onSuccess }: Manag
                 </label>
                 <select
                   value={selectedIndicator}
-                  onChange={(e) => setSelectedIndicator(e.target.value as IndicatorType)}
+                  onChange={(e) => setSelectedIndicator(e.target.value as AdminTargetIndicatorType)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all"
                 >
                   <option value="">-- Pilih Indicator --</option>
-                  {INDICATOR_TYPES.map((type) => (
+                  {ADMIN_TARGET_INDICATOR_TYPES.map((type) => (
                     <option key={type} value={type}>
-                      {INDICATOR_TYPE_LABELS[type]}
+                      {ADMIN_TARGET_INDICATOR_LABELS[type]}
                     </option>
                   ))}
                 </select>
@@ -397,7 +398,7 @@ export default function ManageTargetsModal({ isOpen, onClose, onSuccess }: Manag
                   </span>
                 </div>
                 <div className="text-xs text-pln-blue/70">
-                  {INDICATOR_TYPE_LABELS[selectedIndicator]} • {selectedYear} • 
+                  {ADMIN_TARGET_INDICATOR_LABELS[selectedIndicator]} • {selectedYear} • 
                   {selectedPeriodType === 'semester' 
                     ? ` Semester ${selectedSemester}` 
                     : ` ${MONTHS[selectedMonth - 1].label}`}

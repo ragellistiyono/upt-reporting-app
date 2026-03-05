@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { databases } from '@/lib/appwrite';
-import { APPWRITE_CONFIG, INDICATOR_TYPE_LABELS, INDICATOR_TYPES } from '@/lib/constants';
+import { APPWRITE_CONFIG, INDICATOR_TYPE_LABELS, INDICATOR_TYPES, CHART_INDICATOR_CONFIG } from '@/lib/constants';
 import { Query } from 'appwrite';
 import type { Submission, Instruction, InstructionReadStatus, Target } from '@/types';
 import InstructionDetailModal from '@/components/InstructionDetailModal';
@@ -211,67 +211,105 @@ export default function UPTDashboardPage() {
     });
   }, [submissions, selectedMonth, selectedYear]);
 
-  // Calculate indicator counts from filtered submissions
+  // Calculate indicator counts from filtered submissions (7 items with split Media Massa/Sosial)
   const indicatorCounts = useMemo(() => {
-    const counts = Object.fromEntries(
-      Object.keys(INDICATOR_TYPE_LABELS).map(key => [key, 0])
-    );
+    const counts: Record<string, number> = {};
+    CHART_INDICATOR_CONFIG.forEach(cfg => { counts[cfg.key] = 0; });
     for (const sub of filteredSubmissions) {
-      if (counts[sub.indicator_type] !== undefined) {
-        counts[sub.indicator_type]++;
-      }
+      CHART_INDICATOR_CONFIG.forEach(cfg => {
+        if (cfg.subCategory) {
+          if (sub.indicator_type === cfg.indicatorType && sub.sub_category === cfg.subCategory) {
+            counts[cfg.key]++;
+          }
+        } else {
+          if (sub.indicator_type === cfg.indicatorType) {
+            counts[cfg.key]++;
+          }
+        }
+      });
     }
     return counts;
   }, [filteredSubmissions]);
 
-  // Calculate indicator targets from current month/year filter
+  // Calculate indicator targets from current month/year filter (handles split target types)
   const indicatorTargets = useMemo(() => {
-    const targetsByIndicator: Record<string, number> = {};
+    const targetsByKey: Record<string, number> = {};
 
     targets.forEach((target) => {
       if (target.year === selectedYear) {
-        const existingTarget = targetsByIndicator[target.indicator_type] || 0;
-        targetsByIndicator[target.indicator_type] = existingTarget + target.target_value;
+        // Map split target types from Appwrite to chart config keys
+        CHART_INDICATOR_CONFIG.forEach(cfg => {
+          // Match split types: 'SKORING MEDIA MASSA' -> ind3a, 'SKORING MEDIA SOSIAL' -> ind3b
+          if (cfg.subCategory) {
+            // For split indicators, targets are stored with their own indicator_type
+            // e.g. 'SKORING MEDIA MASSA' or 'SKORING MEDIA SOSIAL'
+            const splitTargetType = cfg.indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && cfg.subCategory === 'MEDIA MASSA'
+              ? 'SKORING MEDIA MASSA'
+              : cfg.indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && cfg.subCategory === 'MEDIA SOSIAL'
+              ? 'SKORING MEDIA SOSIAL'
+              : null;
+            if (splitTargetType && (target.indicator_type as string) === splitTargetType) {
+              targetsByKey[cfg.key] = (targetsByKey[cfg.key] || 0) + target.target_value;
+            }
+          } else {
+            if (target.indicator_type === cfg.indicatorType) {
+              targetsByKey[cfg.key] = (targetsByKey[cfg.key] || 0) + target.target_value;
+            }
+          }
+        });
       }
     });
 
-    return targetsByIndicator;
+    return targetsByKey;
   }, [targets, selectedYear]);
 
-  // Calculate chart data for Rekap Visualisasi (per indicator)
+  // Calculate chart data for Rekap Visualisasi (per indicator — 7 entries with split)
   const chartDataByIndicator = useMemo(() => {
-    const submissionsByIndicator: Record<string, number> = {};
-    
     // Filter submissions based on indicator filter
     const filteredByIndicator = indicatorFilter === 'all' 
       ? submissions 
       : submissions.filter(sub => sub.indicator_type === indicatorFilter);
-    
+
+    // Count submissions per chart indicator config
+    const countsByKey: Record<string, number> = {};
+    CHART_INDICATOR_CONFIG.forEach(cfg => { countsByKey[cfg.key] = 0; });
+
     filteredByIndicator.forEach((sub) => {
-      const indicator = sub.indicator_type;
-      
-      // For SKORING MEDIA MASSA DAN MEDIA SOSIAL, use skor_media_sosial as realisasi
-      if (indicator === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL') {
-        if (sub.skor_media_sosial && typeof sub.skor_media_sosial === 'number') {
-          submissionsByIndicator[indicator] = (submissionsByIndicator[indicator] || 0) + sub.skor_media_sosial;
+      CHART_INDICATOR_CONFIG.forEach(cfg => {
+        if (cfg.subCategory) {
+          if (sub.indicator_type === cfg.indicatorType && sub.sub_category === cfg.subCategory) {
+            countsByKey[cfg.key]++;
+          }
+        } else {
+          if (sub.indicator_type === cfg.indicatorType) {
+            countsByKey[cfg.key]++;
+          }
         }
-      } else {
-        submissionsByIndicator[indicator] = (submissionsByIndicator[indicator] || 0) + 1;
-      }
+      });
     });
 
-    const targetsByIndicator: Record<string, number> = {};
+    // Build target map per chart key
+    const targetsByKey: Record<string, number> = {};
     targets.forEach((target) => {
-      if (indicatorFilter === 'all' || target.indicator_type === indicatorFilter) {
-        const existingTarget = targetsByIndicator[target.indicator_type] || 0;
-        targetsByIndicator[target.indicator_type] = existingTarget + target.target_value;
-      }
+      if (indicatorFilter !== 'all' && target.indicator_type !== indicatorFilter) return;
+      CHART_INDICATOR_CONFIG.forEach(cfg => {
+        if (cfg.subCategory) {
+          const splitTargetType = cfg.subCategory === 'MEDIA MASSA' ? 'SKORING MEDIA MASSA' : 'SKORING MEDIA SOSIAL';
+          if ((target.indicator_type as string) === splitTargetType) {
+            targetsByKey[cfg.key] = (targetsByKey[cfg.key] || 0) + target.target_value;
+          }
+        } else {
+          if (target.indicator_type === cfg.indicatorType) {
+            targetsByKey[cfg.key] = (targetsByKey[cfg.key] || 0) + target.target_value;
+          }
+        }
+      });
     });
 
-    return INDICATOR_TYPES.map((indicatorType) => ({
-      name: INDICATOR_TYPE_LABELS[indicatorType] || indicatorType,
-      realisasi: submissionsByIndicator[indicatorType] || 0,
-      target: targetsByIndicator[indicatorType] || 0,
+    return CHART_INDICATOR_CONFIG.map(cfg => ({
+      name: cfg.fullLabel,
+      realisasi: countsByKey[cfg.key] || 0,
+      target: targetsByKey[cfg.key] || 0,
     }));
   }, [submissions, targets, indicatorFilter]);
 
@@ -609,14 +647,14 @@ export default function UPTDashboardPage() {
               </div>
             ) : (
               <>
-                {Object.entries(INDICATOR_TYPE_LABELS).map(([key, label]) => {
-                  const realisasi = indicatorCounts[key] || 0;
-                  const target = indicatorTargets[key] || 0;
+                {CHART_INDICATOR_CONFIG.map(cfg => {
+                  const realisasi = indicatorCounts[cfg.key] || 0;
+                  const target = indicatorTargets[cfg.key] || 0;
                   const percentage = target === 0 ? null : Math.round((realisasi / target) * 100);
                   
                   return (
-                    <div key={key} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-600">{label}</span>
+                    <div key={cfg.key} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">{cfg.fullLabel}</span>
                       {percentage === null ? (
                         <span className="text-xs text-gray-400 italic">Admin belum set target</span>
                       ) : (

@@ -1,21 +1,39 @@
 'use client';
 
-import { useState, useEffect, Suspense, type FormEvent } from 'react';
+import { useState, useEffect, useRef, Suspense, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { MESSAGES } from '@/lib/constants';
 import Image from 'next/image';
+import { Turnstile, type BoundTurnstileObject } from 'react-turnstile';
 
 // Force dynamic rendering - prevent static caching
 export const dynamic = 'force-dynamic';
 
 const EMAIL_DOMAIN = '@digitalcommtrack.com';
 
+/**
+ * Validate that a redirect URL is safe (relative path only).
+ * Prevents open redirect attacks.
+ */
+function isSafeRedirect(url: string | null): url is string {
+  if (!url) return false;
+  // Must start with "/" but not "//" (protocol-relative URL)
+  if (!url.startsWith('/') || url.startsWith('//')) return false;
+  // Must not contain protocol
+  if (url.includes('://')) return false;
+  // Must not be the login page itself
+  if (url === '/login') return false;
+  return true;
+}
+
 function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const boundTurnstileRef = useRef<BoundTurnstileObject | null>(null);
   
   const { login, isAuthenticated, role, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
@@ -24,10 +42,9 @@ function LoginForm() {
   // Check if user is already authenticated and redirect
   useEffect(() => {
     if (!authLoading && isAuthenticated && role) {
-      // User is already authenticated, redirect them
       let redirectUrl = '/';
       
-      if (redirect && redirect !== '/login') {
+      if (isSafeRedirect(redirect)) {
         redirectUrl = redirect;
       } else if (role === 'admin') {
         redirectUrl = '/admin';
@@ -42,20 +59,49 @@ function LoginForm() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+
+    // Verify Turnstile token first
+    if (!turnstileToken) {
+      setError('Silakan selesaikan verifikasi keamanan terlebih dahulu.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // Server-side Turnstile verification
+      const verifyResponse = await fetch('/api/verify-turnstile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+
+      const verifyData = await verifyResponse.json();
+
+      if (!verifyData.success) {
+        setError(verifyData.error || 'Verifikasi keamanan gagal. Silakan coba lagi.');
+        // Reset Turnstile for retry
+        setTurnstileToken(null);
+        boundTurnstileRef.current?.reset();
+        setIsLoading(false);
+        return;
+      }
+
+      // Turnstile verified — proceed with login
       const email = username.trim().toLowerCase() + EMAIL_DOMAIN;
       await login(email, password);
       
       // Login successful - redirect appropriately
       setTimeout(() => {
-        const redirectUrl = redirect && redirect !== '/login' ? redirect : '/';
+        const redirectUrl = isSafeRedirect(redirect) ? redirect : '/';
         window.location.href = redirectUrl;
       }, 200);
       
     } catch {
       setError(MESSAGES.ERROR.INVALID_CREDENTIALS);
+      // Reset Turnstile for retry
+      setTurnstileToken(null);
+      boundTurnstileRef.current?.reset();
       setIsLoading(false);
     }
   };
@@ -91,11 +137,10 @@ function LoginForm() {
                 />
               </div>
               <div className="text-left">
-                <h1 className="text-2xl font-bold text-white">PLN</h1>
-                <p className="text-pln-yellow text-xs font-medium">UPT Reporting</p>
+                <p className="text-pln-yellow text-xs font-medium">Digital Communication Track</p>
               </div>
             </div>
-            <p className="text-blue-100 text-sm mt-2">Sistem Pelaporan Kinerja Unit Pelaksana Teknis</p>
+            <p className="text-blue-100 text-sm mt-2">Sistem Pelaporan Kinerja Komunikasi <br></br>Unit Pelaksana Transmisi</p>
           </div>
 
           {/* Form Section */}
@@ -161,10 +206,28 @@ function LoginForm() {
                 />
               </div>
 
+              {/* Cloudflare Turnstile Widget */}
+              <div className="flex justify-center">
+                <Turnstile
+                  sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
+                  onVerify={(token, boundTurnstile) => {
+                    setTurnstileToken(token);
+                    boundTurnstileRef.current = boundTurnstile;
+                  }}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={() => {
+                    setTurnstileToken(null);
+                    setError('Verifikasi keamanan gagal dimuat. Silakan refresh halaman.');
+                  }}
+                  theme="light"
+                  language="id"
+                />
+              </div>
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !turnstileToken}
                 className="w-full bg-pln-blue text-white font-semibold py-3 px-6 rounded-lg
                            hover:bg-pln-blue-dark
                            disabled:bg-gray-300 disabled:cursor-not-allowed

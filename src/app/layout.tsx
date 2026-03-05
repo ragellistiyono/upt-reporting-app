@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Sistem Pelaporan Kinerja UPT - PLN Indonesia",
-  description: "Sistem Pelaporan Kinerja Unit Pelaksana Teknis PLN Indonesia",
+  description: "Sistem Pelaporan Kinerja Unit Pelaksana Transmisi PLN Indonesia",
   icons: {
     icon: "/favicon.ico",
   },

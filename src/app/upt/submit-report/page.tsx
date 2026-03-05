@@ -77,15 +77,26 @@ export default function SubmitReportPage() {
   const [success, setSuccess] = useState(false);
   const [showSkoringBlockedModal, setShowSkoringBlockedModal] = useState(false);
 
-  const isSkoringDateBlocked = () => {
+  const isDateBlocked = () => {
     const today = new Date();
     const day = today.getDate();
     return day === 17 || day === 18;
   };
 
+  const getMinDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth(); // 0-indexed
+    if (month === 0) {
+      return `${year}-01-01`;
+    }
+    const prevMonth = String(month).padStart(2, '0');
+    return `${year}-${prevMonth}-19`;
+  };
+
   // Check if sub-category should be shown
   const showSubCategory = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT';
-  const showSkoringMediaSubCategory = indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && !isSkoringDateBlocked();
+  const showSkoringMediaSubCategory = indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL';
   
   // Check which form fields to show
   const isSkoringMedia = indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL';
@@ -493,7 +504,7 @@ export default function SubmitReportPage() {
                 value={indicatorType}
                 onChange={(e) => {
                   const selected = e.target.value as IndicatorType;
-                  if (selected === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && isSkoringDateBlocked()) {
+                  if (selected && isDateBlocked()) {
                     setShowSkoringBlockedModal(true);
                     setIndicatorType('');
                     setSubCategory('');
@@ -587,6 +598,8 @@ export default function SubmitReportPage() {
                 id="submission_date"
                 type="date"
                 value={submissionDate}
+                min={getMinDate()}
+                max={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setSubmissionDate(e.target.value)}
                 required
                 disabled={isSubmitting}
@@ -1089,7 +1102,7 @@ export default function SubmitReportPage() {
                       Download Template Excel
                     </a>
                     <p className="text-xs text-gray-500 mt-2 ml-8">
-                      💡 Setelah download, buka sheet <strong>&quot;{uptName?.toUpperCase()}&quot;</strong> dan isi data di kolom <strong>J-Q</strong> (No, Kategori, Tanggal, Judul, Link, Username, Platform, Kategori Media).
+                      💡 Setelah download, buka sheet <strong>&quot;medsos&quot;</strong> dan isi data di kolom <strong>J-Q</strong> (No, Kategori, Tanggal, Judul, Link, Username, Platform, Kategori Media).
                     </p>
                   </div>
 
@@ -1102,7 +1115,7 @@ export default function SubmitReportPage() {
                       </label>
                     </div>
                     <p className="text-sm text-gray-500 mb-3 ml-8">
-                      Upload file template yang sudah diisi lengkap. Total Score akan otomatis terbaca dari sheet <strong>&quot;{uptName?.toUpperCase()}&quot;</strong>.
+                      Upload file template yang sudah diisi lengkap. Total Score akan otomatis terbaca.
                     </p>
                     <div className="ml-8">
                       <input
@@ -1113,36 +1126,35 @@ export default function SubmitReportPage() {
                           const file = e.target.files?.[0];
                           if (file) {
                             setExcelFile(file);
-                            // Parse Excel to extract Total Score from the UPT-specific sheet
+                            // Parse Excel to extract Total Score from the "medsos" sheet
                             const reader = new FileReader();
                             reader.onload = (event) => {
                               try {
                                 const data = new Uint8Array(event.target?.result as ArrayBuffer);
                                 const workbook = XLSX.read(data, { type: 'array' });
                                 
-                                // Find the sheet matching the logged-in UPT name (case-insensitive)
-                                const uptSheetName = workbook.SheetNames.find(
-                                  (name) => name.toLowerCase() === uptName?.toLowerCase()
-                                );
+                                // Find the "medsos" sheet (the data entry sheet)
+                                const medsosSheet = workbook.Sheets['medsos'] || workbook.Sheets['MEDSOS'] || workbook.Sheets[workbook.SheetNames.find(
+                                  (name) => name.toLowerCase() === 'medsos'
+                                ) || ''];
                                 
-                                if (!uptSheetName) {
+                                if (!medsosSheet) {
                                   setParsedTotalScore(null);
-                                  setError(`Sheet "${uptName?.toUpperCase()}" tidak ditemukan dalam file Excel. Pastikan file yang di-upload adalah template yang benar.`);
+                                  setError('Sheet "medsos" tidak ditemukan dalam file Excel. Pastikan file yang di-upload adalah template yang benar.');
                                   return;
                                 }
                                 
-                                const uptSheet = workbook.Sheets[uptSheetName];
                                 let totalScore: number | null = null;
                                 
                                 // Method 1: Read cell D13 directly (known position of Total Score)
-                                const cellD13 = uptSheet['D13'];
+                                const cellD13 = medsosSheet['D13'];
                                 if (cellD13 && typeof cellD13.v === 'number') {
                                   totalScore = cellD13.v;
                                 }
                                 
                                 // Method 2: Fallback - search for "Total Score" label
                                 if (totalScore === null) {
-                                  const sheetData = XLSX.utils.sheet_to_json<(string | number | null)[]>(uptSheet, { header: 1 });
+                                  const sheetData = XLSX.utils.sheet_to_json<(string | number | null)[]>(medsosSheet, { header: 1 });
                                   for (const row of sheetData) {
                                     if (!row || !Array.isArray(row)) continue;
                                     for (let colIdx = 0; colIdx < row.length; colIdx++) {

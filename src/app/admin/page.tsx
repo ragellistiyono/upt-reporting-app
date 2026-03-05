@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { databases, storage } from '@/lib/appwrite';
-import { APPWRITE_CONFIG, INDICATOR_TYPES, UPT_NAMES, INDICATOR_TYPE_LABELS, SUB_CATEGORY_LABELS } from '@/lib/constants';
+import { APPWRITE_CONFIG, INDICATOR_TYPES, UPT_NAMES, INDICATOR_TYPE_LABELS, SUB_CATEGORY_LABELS, CHART_INDICATOR_CONFIG } from '@/lib/constants';
 import { Query } from 'appwrite';
 import type { Submission, Instruction, Target } from '@/types';
 import Image from 'next/image';
@@ -22,7 +22,7 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table';
 import * as XLSX from 'xlsx';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import CreateInstructionModal from '@/components/CreateInstructionModal';
 import ManageTargetsModal from '@/components/ManageTargetsModal';
 
@@ -42,6 +42,8 @@ export default function AdminDashboardPage() {
   
   // UI state
   const [showDataTable, setShowDataTable] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   
   // Table state
   const [sorting, setSorting] = useState<SortingState>([{ id: 'submission_date', desc: true }]);
@@ -255,37 +257,56 @@ export default function AdminDashboardPage() {
     return filtered;
   }, [submissions, uptFilter, indicatorFilter, dateFrom, dateTo]);
 
-  // Calculate chart data for visualization
+  // Calculate chart data for visualization — 7 indicators per UPT
   const chartData = useMemo(() => {
-    const submissionsByUPT: Record<string, number> = {};
-    filteredData.forEach((sub) => {
-      const uptName = sub.submitted_by_upt;
-      submissionsByUPT[uptName] = (submissionsByUPT[uptName] || 0) + 1;
-    });
+    // Determine which UPTs to show
+    const uptsToShow = uptFilter !== 'all' 
+      ? UPT_NAMES.filter(u => u === uptFilter) 
+      : [...UPT_NAMES];
 
-    const targetsByUPT: Record<string, number> = {};
-    targets.forEach((target) => {
-      if (indicatorFilter === 'all' || target.indicator_type === indicatorFilter) {
-        const existingTarget = targetsByUPT[target.upt_name] || 0;
-        targetsByUPT[target.upt_name] = existingTarget + target.target_value;
-      }
-    });
+    return uptsToShow.map((uptName) => {
+      const uptSubmissions = filteredData.filter(sub => sub.submitted_by_upt === uptName);
+      
+      const row: Record<string, string | number> = {
+        name: uptName.replace('UPT ', ''),
+      };
 
-    return UPT_NAMES.map((uptName) => ({
-      name: uptName.replace('UPT ', ''),
-      realisasi: submissionsByUPT[uptName] || 0,
-      target: targetsByUPT[uptName] || 0,
-    }));
-  }, [filteredData, targets, indicatorFilter]);
+      CHART_INDICATOR_CONFIG.forEach(cfg => {
+        if (cfg.subCategory) {
+          // Split indicator (Media Massa / Media Sosial)
+          row[cfg.key] = uptSubmissions.filter(
+            s => s.indicator_type === cfg.indicatorType && s.sub_category === cfg.subCategory
+          ).length;
+        } else {
+          row[cfg.key] = uptSubmissions.filter(
+            s => s.indicator_type === cfg.indicatorType
+          ).length;
+        }
+      });
+
+      return row;
+    });
+  }, [filteredData, uptFilter]);
 
   // Calculate summary statistics
   const totalRealisasi = useMemo(() => {
-    return chartData.reduce((sum, item) => sum + item.realisasi, 0);
+    return chartData.reduce((sum, item) => {
+      let rowSum = 0;
+      CHART_INDICATOR_CONFIG.forEach(cfg => {
+        rowSum += (Number(item[cfg.key]) || 0);
+      });
+      return sum + rowSum;
+    }, 0);
   }, [chartData]);
 
   const totalTarget = useMemo(() => {
-    return chartData.reduce((sum, item) => sum + item.target, 0);
-  }, [chartData]);
+    // Sum all targets for the UPTs currently shown in the chart
+    const uptsInChart = chartData.map(d => `UPT ${d.name}`);
+    return targets
+      .filter(t => uptsInChart.includes(t.upt_name))
+      .filter(t => indicatorFilter === 'all' || t.indicator_type === indicatorFilter)
+      .reduce((sum, t) => sum + t.target_value, 0);
+  }, [chartData, targets, indicatorFilter]);
 
   const capaianPercentage = useMemo(() => {
     if (totalTarget === 0) return 0;
@@ -403,6 +424,21 @@ export default function AdminDashboardPage() {
             <span className="text-gray-400">—</span>
           );
         },
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: 'Aksi',
+        cell: (info) => (
+          <button
+            onClick={() => {
+              setSelectedSubmission(info.row.original);
+              setShowDetailModal(true);
+            }}
+            className="bg-pln-blue/10 hover:bg-pln-blue/20 text-pln-blue px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+          >
+            Lihat Detail
+          </button>
+        ),
       }),
     ],
     [columnHelper]
@@ -669,9 +705,9 @@ export default function AdminDashboardPage() {
 
         {/* Instructions Management */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-pln-blue rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-pln-blue rounded-lg flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
@@ -681,10 +717,10 @@ export default function AdminDashboardPage() {
                 <p className="text-sm text-gray-500">Kelola instruksi untuk UPT</p>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 onClick={() => setShowManageTargets(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto text-sm sm:text-base"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -693,7 +729,7 @@ export default function AdminDashboardPage() {
               </button>
               <button
                 onClick={() => setShowCreateInstruction(true)}
-                className="bg-pln-blue hover:bg-pln-blue-dark text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                className="bg-pln-blue hover:bg-pln-blue-dark text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full sm:w-auto text-sm sm:text-base"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -720,9 +756,9 @@ export default function AdminDashboardPage() {
               <p className="text-gray-500 text-sm">Klik tombol &quot;Buat Instruksi&quot; untuk membuat instruksi baru</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="w-full">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-white">
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Status</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Sub-Kategori</th>
@@ -983,23 +1019,21 @@ export default function AdminDashboardPage() {
             {/* Bar Chart */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
               <h3 className="text-md font-semibold text-gray-700 mb-4">Performa per UPT</h3>
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={Math.max(400, chartData.length * 60)}>
                 <BarChart
                   data={chartData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis 
                     dataKey="name" 
                     stroke="#6B7280" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
                     style={{ fontSize: '12px', fill: '#6B7280' }}
                   />
                   <YAxis 
                     stroke="#6B7280"
                     style={{ fontSize: '12px', fill: '#6B7280' }}
+                    allowDecimals={false}
                   />
                   <Tooltip
                     contentStyle={{
@@ -1010,26 +1044,22 @@ export default function AdminDashboardPage() {
                     }}
                     labelStyle={{ color: '#374151', fontWeight: 'bold' }}
                   />
-                  <Legend />
-                  <Bar dataKey="target" fill="#C4B5FD" name="Target" opacity={0.6} />
-                  <Bar dataKey="realisasi" name="Realisasi">
-                    {chartData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`}
-                        fill={entry.realisasi >= entry.target ? '#10B981' : '#0072BC'}
-                      />
-                    ))}
-                  </Bar>
+                  {CHART_INDICATOR_CONFIG.map(cfg => (
+                    <Bar key={cfg.key} dataKey={cfg.key} fill={cfg.color} name={cfg.label} />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
-              <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-pln-blue rounded"></div>
-                  <span className="text-gray-600">Di bawah target</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
-                  <span className="text-gray-600">Target tercapai</span>
+              {/* Legend: Ind 1-7 with full indicator names */}
+              <div className="mt-6 border-t border-gray-200 pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {CHART_INDICATOR_CONFIG.map(cfg => (
+                    <div key={cfg.key} className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded shrink-0" style={{ backgroundColor: cfg.color }} />
+                      <span className="text-xs text-gray-600">
+                        <span className="font-semibold">{cfg.label}</span> — {cfg.fullLabel}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -1097,9 +1127,9 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Table Content */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-128 overflow-y-auto">
               <table className="w-full">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-gray-200 bg-gray-50">
                       {headerGroup.headers.map((header) => (
@@ -1150,6 +1180,180 @@ export default function AdminDashboardPage() {
               <p className="text-sm text-gray-600">
                 Total data ditampilkan: <span className="font-semibold text-pln-blue">{table.getRowModel().rows.length}</span>
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Submission Detail Modal */}
+        {showDetailModal && selectedSubmission && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowDetailModal(false)} />
+            <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Detail Laporan</h3>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* Common fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</p>
+                    <p className="text-sm text-gray-800 mt-1">
+                      {new Date(selectedSubmission.submission_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">UPT</p>
+                    <p className="text-sm text-gray-800 mt-1">{selectedSubmission.submitted_by_upt}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Indikator</p>
+                    <p className="text-sm text-gray-800 mt-1">{INDICATOR_TYPE_LABELS[selectedSubmission.indicator_type] || selectedSubmission.indicator_type}</p>
+                  </div>
+                  {selectedSubmission.sub_category && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Sub-Kategori</p>
+                      <p className="text-sm text-gray-800 mt-1">{SUB_CATEGORY_LABELS[selectedSubmission.sub_category] || selectedSubmission.sub_category}</p>
+                    </div>
+                  )}
+                </div>
+
+                <hr className="border-gray-200" />
+
+                {/* SKORING MEDIA MASSA */}
+                {selectedSubmission.indicator_type === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && selectedSubmission.sub_category === 'MEDIA MASSA' && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Judul</p>
+                      <p className="text-sm text-gray-800 mt-1">{selectedSubmission.title || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Media</p>
+                      <p className="text-sm text-gray-800 mt-1">{selectedSubmission.nama_media || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Link Publikasi</p>
+                      {selectedSubmission.link_publikasi ? (
+                        <a href={selectedSubmission.link_publikasi} target="_blank" rel="noopener noreferrer" className="text-sm text-pln-blue hover:underline mt-1 block break-all">{selectedSubmission.link_publikasi}</a>
+                      ) : <p className="text-sm text-gray-400 mt-1">—</p>}
+                    </div>
+                  </div>
+                )}
+
+                {/* SKORING MEDIA SOSIAL */}
+                {selectedSubmission.indicator_type === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' && selectedSubmission.sub_category === 'MEDIA SOSIAL' && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Score Media Sosial</p>
+                      <p className="text-sm text-gray-800 mt-1 font-semibold">{selectedSubmission.skor_media_sosial ?? '—'}</p>
+                    </div>
+                    {selectedSubmission.file_id && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">File Excel</p>
+                        <a
+                          href={storage.getFileDownload(APPWRITE_CONFIG.STORAGE.SKORING_MEDIA_FILES, selectedSubmission.file_id).toString()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 mt-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download File
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* INFLUENCER / SMR */}
+                {selectedSubmission.indicator_type === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT' && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Nomor Konten</p>
+                        <p className="text-sm text-gray-800 mt-1">{selectedSubmission.nomor_konten || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Judul</p>
+                        <p className="text-sm text-gray-800 mt-1">{selectedSubmission.title || '—'}</p>
+                      </div>
+                    </div>
+                    {/* Social media links */}
+                    {[
+                      { label: 'Instagram 1', link: selectedSubmission.link_instagram_1, user: selectedSubmission.username_instagram_1 },
+                      { label: 'Instagram 2', link: selectedSubmission.link_instagram_2, user: selectedSubmission.username_instagram_2 },
+                      { label: 'Twitter/X 1', link: selectedSubmission.link_twitter_1, user: selectedSubmission.username_twitter_1 },
+                      { label: 'Twitter/X 2', link: selectedSubmission.link_twitter_2, user: selectedSubmission.username_twitter_2 },
+                      { label: 'YouTube 1', link: selectedSubmission.link_youtube_1, user: selectedSubmission.username_youtube_1 },
+                      { label: 'YouTube 2', link: selectedSubmission.link_youtube_2, user: selectedSubmission.username_youtube_2 },
+                      { label: 'TikTok 1', link: selectedSubmission.link_tiktok, user: selectedSubmission.username_tiktok },
+                      { label: 'TikTok 2', link: selectedSubmission.link_tiktok_2, user: selectedSubmission.username_tiktok_2 },
+                      { label: 'Facebook', link: selectedSubmission.link_facebook, user: selectedSubmission.username_facebook },
+                    ].filter(item => item.link).map((item, idx) => (
+                      <div key={idx} className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">{item.label}</p>
+                        <a href={item.link!} target="_blank" rel="noopener noreferrer" className="text-sm text-pln-blue hover:underline break-all">{item.link}</a>
+                        {item.user && <p className="text-xs text-gray-500 mt-1">@{item.user}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* KONTEN VIDEO IN-CHANGE / PENGELOLAAN KOMUNIKASI INTERNAL */}
+                {(selectedSubmission.indicator_type === 'KONTEN VIDEO IN-CHANGE' || selectedSubmission.indicator_type === 'PENGELOLAAN KOMUNIKASI INTERNAL') && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Judul</p>
+                      <p className="text-sm text-gray-800 mt-1">{selectedSubmission.title || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Link Media</p>
+                      {selectedSubmission.link_media ? (
+                        <a href={selectedSubmission.link_media} target="_blank" rel="noopener noreferrer" className="text-sm text-pln-blue hover:underline mt-1 block break-all">{selectedSubmission.link_media}</a>
+                      ) : <p className="text-sm text-gray-400 mt-1">—</p>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Standard indicators (PUBLIKASI SIARAN PERS, PRODUKSI KONTEN MEDIA SOSIAL UNIT) */}
+                {selectedSubmission.indicator_type !== 'SKORING MEDIA MASSA DAN MEDIA SOSIAL' &&
+                 selectedSubmission.indicator_type !== 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT' &&
+                 selectedSubmission.indicator_type !== 'KONTEN VIDEO IN-CHANGE' &&
+                 selectedSubmission.indicator_type !== 'PENGELOLAAN KOMUNIKASI INTERNAL' && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Judul</p>
+                      <p className="text-sm text-gray-800 mt-1">{selectedSubmission.title || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Narasi</p>
+                      <p className="text-sm text-gray-800 mt-1 whitespace-pre-wrap">{selectedSubmission.narasi || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Link Dokumentasi</p>
+                      {selectedSubmission.documentation_link ? (
+                        <a href={selectedSubmission.documentation_link} target="_blank" rel="noopener noreferrer" className="text-sm text-pln-blue hover:underline mt-1 block break-all">{selectedSubmission.documentation_link}</a>
+                      ) : <p className="text-sm text-gray-400 mt-1">—</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-2xl">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         )}
