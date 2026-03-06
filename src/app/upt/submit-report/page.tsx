@@ -8,12 +8,11 @@ import { databases, storage, ID } from '@/lib/appwrite';
 import { 
   APPWRITE_CONFIG, 
   INDICATOR_TYPES, 
-  SUB_CATEGORIES, 
   SKORING_MEDIA_SUB_CATEGORIES,
   VALIDATION_RULES, 
   MESSAGES 
 } from '@/lib/constants';
-import type { IndicatorType, SubCategory, SkoringMediaSubCategory } from '@/types';
+import type { IndicatorType, SkoringMediaSubCategory } from '@/types';
 import * as XLSX from 'xlsx';
 
 export default function SubmitReportPage() {
@@ -22,7 +21,7 @@ export default function SubmitReportPage() {
 
   // Form state
   const [indicatorType, setIndicatorType] = useState<IndicatorType | ''>('');
-  const [subCategory, setSubCategory] = useState<SubCategory | SkoringMediaSubCategory | ''>('');
+  const [subCategory, setSubCategory] = useState<'INFLUENCER' | SkoringMediaSubCategory | ''>('');
   const [submissionDate, setSubmissionDate] = useState('');
   const [title, setTitle] = useState('');
   const [narasi, setNarasi] = useState('');
@@ -40,36 +39,66 @@ export default function SubmitReportPage() {
   
   // Legacy Skoring Media state (kept for compatibility)
   
-  // Influencer/SMR common state
+  // Influencer common state
   const [nomorKonten, setNomorKonten] = useState('');
   
-  // Influencer state (Instagram - 2 fields)
+  // Influencer state (Instagram Feed - 3 fields)
   const [linkInstagram1, setLinkInstagram1] = useState('');
   const [usernameInstagram1, setUsernameInstagram1] = useState('');
   const [linkInstagram2, setLinkInstagram2] = useState('');
   const [usernameInstagram2, setUsernameInstagram2] = useState('');
+  const [linkInstagram3, setLinkInstagram3] = useState('');
+  const [usernameInstagram3, setUsernameInstagram3] = useState('');
   
-  // Influencer state (Twitter/X - 2 fields)
+  // Influencer state (Instagram Reels - 3 fields)
+  const [linkIgReels1, setLinkIgReels1] = useState('');
+  const [usernameIgReels1, setUsernameIgReels1] = useState('');
+  const [linkIgReels2, setLinkIgReels2] = useState('');
+  const [usernameIgReels2, setUsernameIgReels2] = useState('');
+  const [linkIgReels3, setLinkIgReels3] = useState('');
+  const [usernameIgReels3, setUsernameIgReels3] = useState('');
+  
+  // Influencer state (Twitter/X - 3 fields)
   const [linkTwitter1, setLinkTwitter1] = useState('');
   const [usernameTwitter1, setUsernameTwitter1] = useState('');
   const [linkTwitter2, setLinkTwitter2] = useState('');
   const [usernameTwitter2, setUsernameTwitter2] = useState('');
+  const [linkTwitter3, setLinkTwitter3] = useState('');
+  const [usernameTwitter3, setUsernameTwitter3] = useState('');
   
-  // Influencer state (YouTube - 2 fields)
+  // Influencer state (Facebook - 1 field)
+  const [linkFacebook, setLinkFacebook] = useState('');
+  const [usernameFacebook, setUsernameFacebook] = useState('');
+  
+  // Influencer state (Threads - 3 fields)
+  const [linkThreads1, setLinkThreads1] = useState('');
+  const [usernameThreads1, setUsernameThreads1] = useState('');
+  const [linkThreads2, setLinkThreads2] = useState('');
+  const [usernameThreads2, setUsernameThreads2] = useState('');
+  const [linkThreads3, setLinkThreads3] = useState('');
+  const [usernameThreads3, setUsernameThreads3] = useState('');
+  
+  // Influencer state (YouTube Short - 3 fields)
   const [linkYoutube1, setLinkYoutube1] = useState('');
   const [usernameYoutube1, setUsernameYoutube1] = useState('');
   const [linkYoutube2, setLinkYoutube2] = useState('');
   const [usernameYoutube2, setUsernameYoutube2] = useState('');
+  const [linkYoutube3, setLinkYoutube3] = useState('');
+  const [usernameYoutube3, setUsernameYoutube3] = useState('');
+  
+  // Influencer state (YouTube Video - 3 fields)
+  const [linkYtVideo1, setLinkYtVideo1] = useState('');
+  const [usernameYtVideo1, setUsernameYtVideo1] = useState('');
+  const [linkYtVideo2, setLinkYtVideo2] = useState('');
+  const [usernameYtVideo2, setUsernameYtVideo2] = useState('');
+  const [linkYtVideo3, setLinkYtVideo3] = useState('');
+  const [usernameYtVideo3, setUsernameYtVideo3] = useState('');
   
   // Influencer state (TikTok - 2 fields)
   const [linkTiktok, setLinkTiktok] = useState('');
   const [usernameTiktok, setUsernameTiktok] = useState('');
   const [linkTiktok2, setLinkTiktok2] = useState('');
   const [usernameTiktok2, setUsernameTiktok2] = useState('');
-  
-  // SMR state (Facebook - 1 field)
-  const [linkFacebook, setLinkFacebook] = useState('');
-  const [usernameFacebook, setUsernameFacebook] = useState('');
   
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +124,6 @@ export default function SubmitReportPage() {
   };
 
   // Check if sub-category should be shown
-  const showSubCategory = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT';
   const showSkoringMediaSubCategory = indicatorType === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL';
   
   // Check which form fields to show
@@ -103,15 +131,14 @@ export default function SubmitReportPage() {
   const showSkorMediaMassa = isSkoringMedia && subCategory === 'MEDIA MASSA';
   const showSkorMediaSosial = isSkoringMedia && subCategory === 'MEDIA SOSIAL';
   
-  const isInfluencer = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT' && subCategory === 'INFLUENCER';
-  const isSMR = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT' && subCategory === 'SMR';
+  const isInfluencer = indicatorType === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT';
   
   // KONTEN VIDEO IN-CHANGE and PENGELOLAAN KOMUNIKASI INTERNAL use link_media instead of narasi + documentation_link
   const isKontenInChange = indicatorType === 'KONTEN VIDEO IN-CHANGE';
   const isKontenWAG = indicatorType === 'PENGELOLAAN KOMUNIKASI INTERNAL';
   const showLinkMedia = isKontenInChange || isKontenWAG;
   
-  const showStandardFields = !isSkoringMedia && !isInfluencer && !isSMR && !showLinkMedia;
+  const showStandardFields = !isSkoringMedia && !isInfluencer && !showLinkMedia;
 
   // Redirect if not UPT user
   if (!isLoading && role !== 'uptuser') {
@@ -138,15 +165,27 @@ export default function SubmitReportPage() {
     // Validate username fields - should not contain URLs
     const urlPattern = /https?:\/\//i;
     const usernameFields = [
-      { value: usernameInstagram1, name: 'Username Instagram 1' },
-      { value: usernameInstagram2, name: 'Username Instagram 2' },
+      { value: usernameInstagram1, name: 'Username Instagram Feed 1' },
+      { value: usernameInstagram2, name: 'Username Instagram Feed 2' },
+      { value: usernameInstagram3, name: 'Username Instagram Feed 3' },
+      { value: usernameIgReels1, name: 'Username Instagram Reels 1' },
+      { value: usernameIgReels2, name: 'Username Instagram Reels 2' },
+      { value: usernameIgReels3, name: 'Username Instagram Reels 3' },
       { value: usernameTwitter1, name: 'Username Twitter 1' },
       { value: usernameTwitter2, name: 'Username Twitter 2' },
-      { value: usernameYoutube1, name: 'Username/Channel YouTube 1' },
-      { value: usernameYoutube2, name: 'Username/Channel YouTube 2' },
+      { value: usernameTwitter3, name: 'Username Twitter 3' },
+      { value: usernameFacebook, name: 'Username/Page Facebook' },
+      { value: usernameThreads1, name: 'Username Threads 1' },
+      { value: usernameThreads2, name: 'Username Threads 2' },
+      { value: usernameThreads3, name: 'Username Threads 3' },
+      { value: usernameYoutube1, name: 'Username/Channel YouTube Short 1' },
+      { value: usernameYoutube2, name: 'Username/Channel YouTube Short 2' },
+      { value: usernameYoutube3, name: 'Username/Channel YouTube Short 3' },
+      { value: usernameYtVideo1, name: 'Username/Channel YouTube Video 1' },
+      { value: usernameYtVideo2, name: 'Username/Channel YouTube Video 2' },
+      { value: usernameYtVideo3, name: 'Username/Channel YouTube Video 3' },
       { value: usernameTiktok, name: 'Username TikTok 1' },
       { value: usernameTiktok2, name: 'Username TikTok 2' },
-      { value: usernameFacebook, name: 'Username/Page Facebook' },
     ];
 
     for (const field of usernameFields) {
@@ -188,7 +227,7 @@ export default function SubmitReportPage() {
           return;
         }
       }
-    } else if (isInfluencer || isSMR) {
+    } else if (isInfluencer) {
       if (!nomorKonten || nomorKonten.trim().length === 0) {
         setError('Silakan masukkan Nomor Konten');
         return;
@@ -198,16 +237,29 @@ export default function SubmitReportPage() {
         setError(`Judul minimal ${VALIDATION_RULES.TITLE.MIN_LENGTH} karakter`);
         return;
       }
-       
 
-      const hasAnySocialMedia = isInfluencer
-        ? (linkInstagram1 || linkInstagram2 || linkTwitter1 || linkTwitter2 || linkYoutube1 || linkYoutube2 || linkTiktok || linkTiktok2)
-        : (linkInstagram1 || linkFacebook || linkTwitter1);
-
-      if (!hasAnySocialMedia) {
-        setError('Silakan isi minimal satu link media sosial');
-        return;
-      }
+      // Validate all platforms are filled
+      if (!linkInstagram1) { setError('Link Instagram Feed 1 wajib diisi'); return; }
+      if (!linkInstagram2) { setError('Link Instagram Feed 2 wajib diisi'); return; }
+      if (!linkInstagram3) { setError('Link Instagram Feed 3 wajib diisi'); return; }
+      if (!linkIgReels1) { setError('Link Instagram Reels 1 wajib diisi'); return; }
+      if (!linkIgReels2) { setError('Link Instagram Reels 2 wajib diisi'); return; }
+      if (!linkIgReels3) { setError('Link Instagram Reels 3 wajib diisi'); return; }
+      if (!linkTwitter1) { setError('Link Twitter/X 1 wajib diisi'); return; }
+      if (!linkTwitter2) { setError('Link Twitter/X 2 wajib diisi'); return; }
+      if (!linkTwitter3) { setError('Link Twitter/X 3 wajib diisi'); return; }
+      if (!linkFacebook) { setError('Link Facebook wajib diisi'); return; }
+      if (!linkThreads1) { setError('Link Threads 1 wajib diisi'); return; }
+      if (!linkThreads2) { setError('Link Threads 2 wajib diisi'); return; }
+      if (!linkThreads3) { setError('Link Threads 3 wajib diisi'); return; }
+      if (!linkYoutube1) { setError('Link YouTube Short 1 wajib diisi'); return; }
+      if (!linkYoutube2) { setError('Link YouTube Short 2 wajib diisi'); return; }
+      if (!linkYoutube3) { setError('Link YouTube Short 3 wajib diisi'); return; }
+      if (!linkYtVideo1) { setError('Link YouTube Video 1 wajib diisi'); return; }
+      if (!linkYtVideo2) { setError('Link YouTube Video 2 wajib diisi'); return; }
+      if (!linkYtVideo3) { setError('Link YouTube Video 3 wajib diisi'); return; }
+      if (!linkTiktok) { setError('Link TikTok 1 wajib diisi'); return; }
+      if (!linkTiktok2) { setError('Link TikTok 2 wajib diisi'); return; }
     } else if (showLinkMedia) {
       // Validation for KONTEN VIDEO IN-CHANGE and PENGELOLAAN KOMUNIKASI INTERNAL
       if (title.length < VALIDATION_RULES.TITLE.MIN_LENGTH) {
@@ -282,63 +334,60 @@ export default function SubmitReportPage() {
         submissionData.title = title.trim();
         submissionData.narasi = null;
         submissionData.documentation_link = null;
+        // Instagram Feed
         submissionData.link_instagram_1 = linkInstagram1.trim() || null;
         submissionData.username_instagram_1 = usernameInstagram1.trim() || null;
         submissionData.link_instagram_2 = linkInstagram2.trim() || null;
         submissionData.username_instagram_2 = usernameInstagram2.trim() || null;
+        submissionData.link_instagram_3 = linkInstagram3.trim() || null;
+        submissionData.username_instagram_3 = usernameInstagram3.trim() || null;
+        // Instagram Reels
+        submissionData.link_ig_reels_1 = linkIgReels1.trim() || null;
+        submissionData.username_ig_reels_1 = usernameIgReels1.trim() || null;
+        submissionData.link_ig_reels_2 = linkIgReels2.trim() || null;
+        submissionData.username_ig_reels_2 = usernameIgReels2.trim() || null;
+        submissionData.link_ig_reels_3 = linkIgReels3.trim() || null;
+        submissionData.username_ig_reels_3 = usernameIgReels3.trim() || null;
+        // Twitter/X
         submissionData.link_twitter_1 = linkTwitter1.trim() || null;
         submissionData.username_twitter_1 = usernameTwitter1.trim() || null;
         submissionData.link_twitter_2 = linkTwitter2.trim() || null;
         submissionData.username_twitter_2 = usernameTwitter2.trim() || null;
+        submissionData.link_twitter_3 = linkTwitter3.trim() || null;
+        submissionData.username_twitter_3 = usernameTwitter3.trim() || null;
+        // Facebook
+        submissionData.link_facebook = linkFacebook.trim() || null;
+        submissionData.username_facebook = usernameFacebook.trim() || null;
+        // Threads
+        submissionData.link_threads_1 = linkThreads1.trim() || null;
+        submissionData.username_threads_1 = usernameThreads1.trim() || null;
+        submissionData.link_threads_2 = linkThreads2.trim() || null;
+        submissionData.username_threads_2 = usernameThreads2.trim() || null;
+        submissionData.link_threads_3 = linkThreads3.trim() || null;
+        submissionData.username_threads_3 = usernameThreads3.trim() || null;
+        // YouTube Short
         submissionData.link_youtube_1 = linkYoutube1.trim() || null;
         submissionData.username_youtube_1 = usernameYoutube1.trim() || null;
         submissionData.link_youtube_2 = linkYoutube2.trim() || null;
         submissionData.username_youtube_2 = usernameYoutube2.trim() || null;
+        submissionData.link_youtube_3 = linkYoutube3.trim() || null;
+        submissionData.username_youtube_3 = usernameYoutube3.trim() || null;
+        // YouTube Video
+        submissionData.link_yt_video_1 = linkYtVideo1.trim() || null;
+        submissionData.username_yt_video_1 = usernameYtVideo1.trim() || null;
+        submissionData.link_yt_video_2 = linkYtVideo2.trim() || null;
+        submissionData.username_yt_video_2 = usernameYtVideo2.trim() || null;
+        submissionData.link_yt_video_3 = linkYtVideo3.trim() || null;
+        submissionData.username_yt_video_3 = usernameYtVideo3.trim() || null;
+        // TikTok
         submissionData.link_tiktok = linkTiktok.trim() || null;
         submissionData.username_tiktok = usernameTiktok.trim() || null;
         submissionData.link_tiktok_2 = linkTiktok2.trim() || null;
         submissionData.username_tiktok_2 = usernameTiktok2.trim() || null;
-        submissionData.link_facebook = null;
-        submissionData.username_facebook = null;
-        submissionData.skor_media_massa = null;
-        submissionData.skor_media_sosial = null;
-      } else if (isSMR) {
-        submissionData.sub_category = 'SMR';
-        submissionData.nomor_konten = nomorKonten.trim();
-        submissionData.title = title.trim();
-        submissionData.narasi = null;
-        submissionData.documentation_link = null;
-        submissionData.link_instagram_1 = linkInstagram1.trim() || null;
-        submissionData.username_instagram_1 = usernameInstagram1.trim() || null;
-        submissionData.link_instagram_2 = null;
-        submissionData.username_instagram_2 = null;
-        submissionData.link_facebook = linkFacebook.trim() || null;
-        submissionData.username_facebook = usernameFacebook.trim() || null;
-        submissionData.link_twitter_1 = linkTwitter1.trim() || null;
-        submissionData.username_twitter_1 = usernameTwitter1.trim() || null;
-        submissionData.link_twitter_2 = null;
-        submissionData.username_twitter_2 = null;
-        submissionData.link_youtube_1 = null;
-        submissionData.username_youtube_1 = null;
-        submissionData.link_youtube_2 = null;
-        submissionData.username_youtube_2 = null;
-        submissionData.link_tiktok = null;
-        submissionData.username_tiktok = null;
-        submissionData.link_tiktok_2 = null;
-        submissionData.username_tiktok_2 = null;
-        submissionData.skor_media_massa = null;
-        submissionData.skor_media_sosial = null;
-      } else if (showLinkMedia) {
-        // KONTEN VIDEO IN-CHANGE and PENGELOLAAN KOMUNIKASI INTERNAL fields
-        submissionData.sub_category = null;
-        submissionData.title = title.trim();
-        submissionData.narasi = null;
-        submissionData.documentation_link = null;
-        submissionData.link_media = linkMedia.trim();
         submissionData.skor_media_massa = null;
         submissionData.skor_media_sosial = null;
       } else {
-        submissionData.sub_category = showSubCategory && subCategory ? subCategory : null;
+        submissionData.sub_category = null;
         submissionData.title = title.trim();
         submissionData.narasi = narasi.trim();
         submissionData.documentation_link = documentationLink.trim();
@@ -373,24 +422,27 @@ export default function SubmitReportPage() {
       setParsedTotalScore(null);
       setUploadProgress('');
       setNomorKonten('');
-      setLinkInstagram1('');
-      setUsernameInstagram1('');
-      setLinkInstagram2('');
-      setUsernameInstagram2('');
-      setLinkTwitter1('');
-      setUsernameTwitter1('');
-      setLinkTwitter2('');
-      setUsernameTwitter2('');
-      setLinkYoutube1('');
-      setUsernameYoutube1('');
-      setLinkYoutube2('');
-      setUsernameYoutube2('');
-      setLinkTiktok('');
-      setUsernameTiktok('');
-      setLinkTiktok2('');
-      setUsernameTiktok2('');
-      setLinkFacebook('');
-      setUsernameFacebook('');
+      setLinkInstagram1(''); setUsernameInstagram1('');
+      setLinkInstagram2(''); setUsernameInstagram2('');
+      setLinkInstagram3(''); setUsernameInstagram3('');
+      setLinkIgReels1(''); setUsernameIgReels1('');
+      setLinkIgReels2(''); setUsernameIgReels2('');
+      setLinkIgReels3(''); setUsernameIgReels3('');
+      setLinkTwitter1(''); setUsernameTwitter1('');
+      setLinkTwitter2(''); setUsernameTwitter2('');
+      setLinkTwitter3(''); setUsernameTwitter3('');
+      setLinkFacebook(''); setUsernameFacebook('');
+      setLinkThreads1(''); setUsernameThreads1('');
+      setLinkThreads2(''); setUsernameThreads2('');
+      setLinkThreads3(''); setUsernameThreads3('');
+      setLinkYoutube1(''); setUsernameYoutube1('');
+      setLinkYoutube2(''); setUsernameYoutube2('');
+      setLinkYoutube3(''); setUsernameYoutube3('');
+      setLinkYtVideo1(''); setUsernameYtVideo1('');
+      setLinkYtVideo2(''); setUsernameYtVideo2('');
+      setLinkYtVideo3(''); setUsernameYtVideo3('');
+      setLinkTiktok(''); setUsernameTiktok('');
+      setLinkTiktok2(''); setUsernameTiktok2('');
 
       // Redirect after 2 seconds
       setTimeout(() => {
@@ -511,7 +563,12 @@ export default function SubmitReportPage() {
                     return;
                   }
                   setIndicatorType(selected);
-                  setSubCategory('');
+                  // Auto-set subCategory to INFLUENCER for this indicator type
+                  if (selected === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT') {
+                    setSubCategory('INFLUENCER');
+                  } else {
+                    setSubCategory('');
+                  }
                 }}
                 required
                 disabled={isSubmitting}
@@ -526,32 +583,6 @@ export default function SubmitReportPage() {
               </select>
             </div>
 
-            {/* Sub-Category (for PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT) */}
-            {showSubCategory && (
-              <div className="animate-slideDown">
-                <label htmlFor="sub_category" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Sub-Kategori <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="sub_category"
-                  value={subCategory}
-                  onChange={(e) => setSubCategory(e.target.value as SubCategory)}
-                  required={showSubCategory}
-                  disabled={isSubmitting}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">— Pilih Sub-Kategori —</option>
-                  {SUB_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Diperlukan untuk indikator Pengelolaan Influencer Media Sosial Unit
-                </p>
-              </div>
-            )}
 
             {/* Sub-Category (for SKORING MEDIA) */}
             {showSkoringMediaSubCategory && (
@@ -607,8 +638,8 @@ export default function SubmitReportPage() {
               />
             </div>
 
-            {/* Nomor Konten (for Influencer/SMR) */}
-            {(isInfluencer || isSMR) && (
+            {/* Nomor Konten (for Influencer) */}
+            {isInfluencer && (
               <div className="animate-slideDown">
                 <label htmlFor="nomor_konten" className="block text-sm font-semibold text-gray-700 mb-2">
                   Nomor Konten <span className="text-red-500">*</span>
@@ -618,9 +649,9 @@ export default function SubmitReportPage() {
                   type="text"
                   value={nomorKonten}
                   onChange={(e) => setNomorKonten(e.target.value)}
-                  required={isInfluencer || isSMR}
+                  required={isInfluencer}
                   disabled={isSubmitting}
-                  placeholder="Contoh: INF-001 atau SMR-001"
+                  placeholder="Contoh: INF-001"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -629,8 +660,8 @@ export default function SubmitReportPage() {
               </div>
             )}
 
-            {/* Judul (for Influencer/SMR) */}
-            {(isInfluencer || isSMR) && (
+            {/* Judul (for Influencer) */}
+            {isInfluencer && (
               <div className="animate-slideDown">
                 <label htmlFor="title_influencer" className="block text-sm font-semibold text-gray-700 mb-2">
                   Judul <span className="text-red-500">*</span>
@@ -640,7 +671,7 @@ export default function SubmitReportPage() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  required={isInfluencer || isSMR}
+                  required={isInfluencer}
                   minLength={VALIDATION_RULES.TITLE.MIN_LENGTH}
                   maxLength={VALIDATION_RULES.TITLE.MAX_LENGTH}
                   disabled={isSubmitting}
@@ -656,345 +687,212 @@ export default function SubmitReportPage() {
             {/* INFLUENCER FIELDS */}
             {isInfluencer && (
               <div className="animate-slideDown space-y-4">
-                {/* Instagram Section */}
-                <div className="bg-linear-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-xl p-4">
+                {/* Instagram Feed Section - 3 Akun */}
+                <div className="bg-linear-to-r from-fuchsia-50 to-pink-50 border border-fuchsia-200 rounded-xl p-4">
+                  <h4 className="text-fuchsia-700 font-semibold mb-4 flex items-center gap-2">
+                    📸 Instagram Feed (3 Akun) <span className="text-red-500 text-xs">*Wajib</span>
+                  </h4>
+                  
+                  {[
+                    { link: linkInstagram1, setLink: setLinkInstagram1, user: usernameInstagram1, setUser: setUsernameInstagram1, n: 1 },
+                    { link: linkInstagram2, setLink: setLinkInstagram2, user: usernameInstagram2, setUser: setUsernameInstagram2, n: 2 },
+                    { link: linkInstagram3, setLink: setLinkInstagram3, user: usernameInstagram3, setUser: setUsernameInstagram3, n: 3 },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${idx > 0 ? 'pt-4 border-t border-fuchsia-200 mt-4' : 'mb-4'}`}>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Link Feed {item.n} <span className="text-red-500">*</span></label>
+                        <input type="url" value={item.link} onChange={(e) => item.setLink(e.target.value)} required disabled={isSubmitting}
+                          placeholder="https://www.instagram.com/p/..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Username {item.n}</label>
+                        <input type="text" value={item.user} onChange={(e) => item.setUser(e.target.value)} disabled={isSubmitting}
+                          placeholder="@username" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Instagram Reels Section - 3 Akun */}
+                <div className="bg-linear-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-xl p-4">
                   <h4 className="text-pink-700 font-semibold mb-4 flex items-center gap-2">
-                    📸 Instagram (Maksimal 2 Akun)
+                    🎬 Instagram Reels (3 Akun) <span className="text-red-500 text-xs">*Wajib</span>
                   </h4>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link Instagram 1</label>
-                      <input
-                        type="url"
-                        value={linkInstagram1}
-                        onChange={(e) => setLinkInstagram1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://www.instagram.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
+                  {[
+                    { link: linkIgReels1, setLink: setLinkIgReels1, user: usernameIgReels1, setUser: setUsernameIgReels1, n: 1 },
+                    { link: linkIgReels2, setLink: setLinkIgReels2, user: usernameIgReels2, setUser: setUsernameIgReels2, n: 2 },
+                    { link: linkIgReels3, setLink: setLinkIgReels3, user: usernameIgReels3, setUser: setUsernameIgReels3, n: 3 },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${idx > 0 ? 'pt-4 border-t border-pink-200 mt-4' : 'mb-4'}`}>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Link Reels {item.n} <span className="text-red-500">*</span></label>
+                        <input type="url" value={item.link} onChange={(e) => item.setLink(e.target.value)} required disabled={isSubmitting}
+                          placeholder="https://www.instagram.com/reel/..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Username {item.n}</label>
+                        <input type="text" value={item.user} onChange={(e) => item.setUser(e.target.value)} disabled={isSubmitting}
+                          placeholder="@username" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Username 1</label>
-                      <input
-                        type="text"
-                        value={usernameInstagram1}
-                        onChange={(e) => setUsernameInstagram1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-pink-200">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link Instagram 2</label>
-                      <input
-                        type="url"
-                        value={linkInstagram2}
-                        onChange={(e) => setLinkInstagram2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://www.instagram.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Username 2</label>
-                      <input
-                        type="text"
-                        value={usernameInstagram2}
-                        onChange={(e) => setUsernameInstagram2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* Twitter/X Section */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <h4 className="text-blue-700 font-semibold mb-4 flex items-center gap-2">
-                    𝕏 Twitter/X (Maksimal 2 Akun)
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link Twitter 1</label>
-                      <input
-                        type="url"
-                        value={linkTwitter1}
-                        onChange={(e) => setLinkTwitter1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://twitter.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Username 1</label>
-                      <input
-                        type="text"
-                        value={usernameTwitter1}
-                        onChange={(e) => setUsernameTwitter1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-blue-200">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link Twitter 2</label>
-                      <input
-                        type="url"
-                        value={linkTwitter2}
-                        onChange={(e) => setLinkTwitter2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://twitter.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Username 2</label>
-                      <input
-                        type="text"
-                        value={usernameTwitter2}
-                        onChange={(e) => setUsernameTwitter2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* YouTube Section */}
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <h4 className="text-red-700 font-semibold mb-4 flex items-center gap-2">
-                    ▶️ YouTube (Maksimal 2 Channel)
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link YouTube 1</label>
-                      <input
-                        type="url"
-                        value={linkYoutube1}
-                        onChange={(e) => setLinkYoutube1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://youtube.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Channel 1</label>
-                      <input
-                        type="text"
-                        value={usernameYoutube1}
-                        onChange={(e) => setUsernameYoutube1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@channelname"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-red-200">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link YouTube 2</label>
-                      <input
-                        type="url"
-                        value={linkYoutube2}
-                        onChange={(e) => setLinkYoutube2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://youtube.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Channel 2</label>
-                      <input
-                        type="text"
-                        value={usernameYoutube2}
-                        onChange={(e) => setUsernameYoutube2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@channelname"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* TikTok Section */}
-                <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+                {/* Twitter/X Section - 3 Akun */}
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-4">
                   <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
-                    🎵 TikTok
+                    𝕏 Twitter/X (3 Akun) <span className="text-red-400 text-xs">*Wajib</span>
                   </h4>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-1">Link TikTok 1</label>
-                      <input
-                        type="url"
-                        value={linkTiktok}
-                        onChange={(e) => setLinkTiktok(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://tiktok.com/..."
-                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
+                  {[
+                    { link: linkTwitter1, setLink: setLinkTwitter1, user: usernameTwitter1, setUser: setUsernameTwitter1, n: 1 },
+                    { link: linkTwitter2, setLink: setLinkTwitter2, user: usernameTwitter2, setUser: setUsernameTwitter2, n: 2 },
+                    { link: linkTwitter3, setLink: setLinkTwitter3, user: usernameTwitter3, setUser: setUsernameTwitter3, n: 3 },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${idx > 0 ? 'pt-4 border-t border-slate-700 mt-4' : 'mb-4'}`}>
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Link Twitter {item.n} <span className="text-red-400">*</span></label>
+                        <input type="url" value={item.link} onChange={(e) => item.setLink(e.target.value)} required disabled={isSubmitting}
+                          placeholder="https://x.com/..." className="w-full px-3 py-2 border border-slate-600 rounded-lg text-sm bg-slate-800 text-white placeholder-slate-500 focus:ring-2 focus:ring-sky-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-300 mb-1">Username {item.n}</label>
+                        <input type="text" value={item.user} onChange={(e) => item.setUser(e.target.value)} disabled={isSubmitting}
+                          placeholder="@username" className="w-full px-3 py-2 border border-slate-600 rounded-lg text-sm bg-slate-800 text-white placeholder-slate-500 focus:ring-2 focus:ring-sky-500 focus:border-transparent" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-1">Username 1</label>
-                      <input
-                        type="text"
-                        value={usernameTiktok}
-                        onChange={(e) => setUsernameTiktok(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-700 mt-4">
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-1">Link TikTok 2</label>
-                      <input
-                        type="url"
-                        value={linkTiktok2}
-                        onChange={(e) => setLinkTiktok2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://tiktok.com/..."
-                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-300 mb-1">Username 2</label>
-                      <input
-                        type="text"
-                        value={usernameTiktok2}
-                        onChange={(e) => setUsernameTiktok2(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
-                <p className="text-sm text-gray-500 text-center">
-                  💡 Minimal isi 1 platform media sosial
-                </p>
-              </div>
-            )}
-
-            {/* SMR FIELDS */}
-            {isSMR && (
-              <div className="animate-slideDown space-y-4">
-                {/* Instagram Section */}
-                <div className="bg-linear-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-xl p-4">
-                  <h4 className="text-pink-700 font-semibold mb-4 flex items-center gap-2">
-                    📸 Instagram
+                {/* Facebook Section - 1 Akun */}
+                <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-indigo-200 rounded-xl p-4">
+                  <h4 className="text-indigo-700 font-semibold mb-4 flex items-center gap-2">
+                    👥 Facebook (1 Akun) <span className="text-red-500 text-xs">*Wajib</span>
                   </h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link Instagram</label>
-                      <input
-                        type="url"
-                        value={linkInstagram1}
-                        onChange={(e) => setLinkInstagram1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://www.instagram.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Username</label>
-                      <input
-                        type="text"
-                        value={usernameInstagram1}
-                        onChange={(e) => setUsernameInstagram1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Facebook Section */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <h4 className="text-blue-700 font-semibold mb-4 flex items-center gap-2">
-                    👥 Facebook
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link Facebook</label>
-                      <input
-                        type="url"
-                        value={linkFacebook}
-                        onChange={(e) => setLinkFacebook(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://www.facebook.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <label className="block text-sm text-gray-600 mb-1">Link Facebook <span className="text-red-500">*</span></label>
+                      <input type="url" value={linkFacebook} onChange={(e) => setLinkFacebook(e.target.value)} required disabled={isSubmitting}
+                        placeholder="https://www.facebook.com/..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
                     </div>
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Username / Page</label>
-                      <input
-                        type="text"
-                        value={usernameFacebook}
-                        onChange={(e) => setUsernameFacebook(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="Username atau nama page"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <input type="text" value={usernameFacebook} onChange={(e) => setUsernameFacebook(e.target.value)} disabled={isSubmitting}
+                        placeholder="Username atau nama page" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
                     </div>
                   </div>
                 </div>
 
-                {/* Twitter Section */}
-                <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
-                  <h4 className="text-sky-700 font-semibold mb-4 flex items-center gap-2">
-                    𝕏 Twitter/X
+                {/* Threads Section - 3 Akun */}
+                <div className="bg-linear-to-r from-violet-50 to-fuchsia-50 border border-violet-200 rounded-xl p-4">
+                  <h4 className="text-violet-700 font-semibold mb-4 flex items-center gap-2">
+                    🧵 Threads (3 Akun) <span className="text-red-500 text-xs">*Wajib</span>
                   </h4>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Link Twitter</label>
-                      <input
-                        type="url"
-                        value={linkTwitter1}
-                        onChange={(e) => setLinkTwitter1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="https://twitter.com/..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                      />
+                  {[
+                    { link: linkThreads1, setLink: setLinkThreads1, user: usernameThreads1, setUser: setUsernameThreads1, n: 1 },
+                    { link: linkThreads2, setLink: setLinkThreads2, user: usernameThreads2, setUser: setUsernameThreads2, n: 2 },
+                    { link: linkThreads3, setLink: setLinkThreads3, user: usernameThreads3, setUser: setUsernameThreads3, n: 3 },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${idx > 0 ? 'pt-4 border-t border-violet-200 mt-4' : 'mb-4'}`}>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Link Threads {item.n} <span className="text-red-500">*</span></label>
+                        <input type="url" value={item.link} onChange={(e) => item.setLink(e.target.value)} required disabled={isSubmitting}
+                          placeholder="https://www.threads.net/..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Username {item.n}</label>
+                        <input type="text" value={item.user} onChange={(e) => item.setUser(e.target.value)} disabled={isSubmitting}
+                          placeholder="@username" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Username</label>
-                      <input
-                        type="text"
-                        value={usernameTwitter1}
-                        onChange={(e) => setUsernameTwitter1(e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="@username"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                      />
+                  ))}
+                </div>
+
+                {/* YouTube Short Section - 3 Akun */}
+                <div className="bg-linear-to-r from-rose-50 to-orange-50 border border-rose-200 rounded-xl p-4">
+                  <h4 className="text-rose-700 font-semibold mb-4 flex items-center gap-2">
+                    ▶️ YouTube Short (3 Akun) <span className="text-red-500 text-xs">*Wajib</span>
+                  </h4>
+                  
+                  {[
+                    { link: linkYoutube1, setLink: setLinkYoutube1, user: usernameYoutube1, setUser: setUsernameYoutube1, n: 1 },
+                    { link: linkYoutube2, setLink: setLinkYoutube2, user: usernameYoutube2, setUser: setUsernameYoutube2, n: 2 },
+                    { link: linkYoutube3, setLink: setLinkYoutube3, user: usernameYoutube3, setUser: setUsernameYoutube3, n: 3 },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${idx > 0 ? 'pt-4 border-t border-rose-200 mt-4' : 'mb-4'}`}>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Link YT Short {item.n} <span className="text-red-500">*</span></label>
+                        <input type="url" value={item.link} onChange={(e) => item.setLink(e.target.value)} required disabled={isSubmitting}
+                          placeholder="https://youtube.com/shorts/..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Channel {item.n}</label>
+                        <input type="text" value={item.user} onChange={(e) => item.setUser(e.target.value)} disabled={isSubmitting}
+                          placeholder="@channelname" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 focus:border-transparent" />
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+
+                {/* YouTube Video Section - 3 Akun */}
+                <div className="bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+                  <h4 className="text-amber-700 font-semibold mb-4 flex items-center gap-2">
+                    🎥 YouTube Video (3 Akun) <span className="text-red-500 text-xs">*Wajib</span>
+                  </h4>
+                  
+                  {[
+                    { link: linkYtVideo1, setLink: setLinkYtVideo1, user: usernameYtVideo1, setUser: setUsernameYtVideo1, n: 1 },
+                    { link: linkYtVideo2, setLink: setLinkYtVideo2, user: usernameYtVideo2, setUser: setUsernameYtVideo2, n: 2 },
+                    { link: linkYtVideo3, setLink: setLinkYtVideo3, user: usernameYtVideo3, setUser: setUsernameYtVideo3, n: 3 },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${idx > 0 ? 'pt-4 border-t border-amber-200 mt-4' : 'mb-4'}`}>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Link Video {item.n} <span className="text-red-500">*</span></label>
+                        <input type="url" value={item.link} onChange={(e) => item.setLink(e.target.value)} required disabled={isSubmitting}
+                          placeholder="https://youtube.com/watch?v=..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Channel {item.n}</label>
+                        <input type="text" value={item.user} onChange={(e) => item.setUser(e.target.value)} disabled={isSubmitting}
+                          placeholder="@channelname" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* TikTok Section - 2 Akun */}
+                <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
+                  <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                    🎵 TikTok (2 Akun) <span className="text-red-400 text-xs">*Wajib</span>
+                  </h4>
+                  
+                  {[
+                    { link: linkTiktok, setLink: setLinkTiktok, user: usernameTiktok, setUser: setUsernameTiktok, n: 1 },
+                    { link: linkTiktok2, setLink: setLinkTiktok2, user: usernameTiktok2, setUser: setUsernameTiktok2, n: 2 },
+                  ].map((item, idx) => (
+                    <div key={idx} className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${idx > 0 ? 'pt-4 border-t border-gray-700 mt-4' : 'mb-4'}`}>
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-1">Link TikTok {item.n} <span className="text-red-400">*</span></label>
+                        <input type="url" value={item.link} onChange={(e) => item.setLink(e.target.value)} required disabled={isSubmitting}
+                          placeholder="https://tiktok.com/..." className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-1">Username {item.n}</label>
+                        <input type="text" value={item.user} onChange={(e) => item.setUser(e.target.value)} disabled={isSubmitting}
+                          placeholder="@username" className="w-full px-3 py-2 border border-gray-600 rounded-lg text-sm bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <p className="text-sm text-gray-500 text-center">
-                  💡 Minimal isi 1 platform media sosial
+                  ⚠️ Semua platform media sosial wajib diisi
                 </p>
               </div>
             )}
-
             {/* Media Massa Form Fields */}
             {showSkorMediaMassa && (
               <div className="animate-slideDown space-y-4">

@@ -40,8 +40,7 @@ export const INDICATOR_TYPES = [
 export type IndicatorType = typeof INDICATOR_TYPES[number];
 
 export const SUB_CATEGORIES = [
-  'INFLUENCER',
-  'SMR'
+  'INFLUENCER'
 ] as const;
 
 export type SubCategory = typeof SUB_CATEGORIES[number];
@@ -93,31 +92,58 @@ export interface Submission {
   nama_media?: string | null;
   // Skoring Media Sosial file upload
   file_id?: string | null; // Appwrite Storage file ID
-  // Influencer/SMR common fields
+  // Influencer common fields
   nomor_konten?: string | null;
-  // Influencer fields (Instagram - 2 fields)
+  // Influencer fields (Instagram Feed - 3 fields)
   link_instagram_1?: string | null;
   username_instagram_1?: string | null;
   link_instagram_2?: string | null;
   username_instagram_2?: string | null;
-  // Influencer fields (Twitter/X - 2 fields)
+  link_instagram_3?: string | null;
+  username_instagram_3?: string | null;
+  // Influencer fields (Instagram Reels - 3 fields)
+  link_ig_reels_1?: string | null;
+  username_ig_reels_1?: string | null;
+  link_ig_reels_2?: string | null;
+  username_ig_reels_2?: string | null;
+  link_ig_reels_3?: string | null;
+  username_ig_reels_3?: string | null;
+  // Influencer fields (Twitter/X - 3 fields)
   link_twitter_1?: string | null;
   username_twitter_1?: string | null;
   link_twitter_2?: string | null;
   username_twitter_2?: string | null;
-  // Influencer fields (YouTube - 2 fields)
+  link_twitter_3?: string | null;
+  username_twitter_3?: string | null;
+  // Influencer fields (Facebook - 1 field)
+  link_facebook?: string | null;
+  username_facebook?: string | null;
+  // Influencer fields (Threads - 3 fields)
+  link_threads_1?: string | null;
+  username_threads_1?: string | null;
+  link_threads_2?: string | null;
+  username_threads_2?: string | null;
+  link_threads_3?: string | null;
+  username_threads_3?: string | null;
+  // Influencer fields (YouTube Short - 3 fields)
   link_youtube_1?: string | null;
   username_youtube_1?: string | null;
   link_youtube_2?: string | null;
   username_youtube_2?: string | null;
+  link_youtube_3?: string | null;
+  username_youtube_3?: string | null;
+  // Influencer fields (YouTube Video - 3 fields)
+  link_yt_video_1?: string | null;
+  username_yt_video_1?: string | null;
+  link_yt_video_2?: string | null;
+  username_yt_video_2?: string | null;
+  link_yt_video_3?: string | null;
+  username_yt_video_3?: string | null;
   // Influencer fields (TikTok - 2 fields)
   link_tiktok?: string | null;
   username_tiktok?: string | null;
   link_tiktok_2?: string | null;
   username_tiktok_2?: string | null;
-  // SMR fields (Facebook - 1 field)
-  link_facebook?: string | null;
-  username_facebook?: string | null;
   submitted_by_user: string; // Appwrite User ID
 }
 
@@ -139,8 +165,8 @@ export interface Instruction {
   $updatedAt: string;
   $permissions: string[];
   status: InstructionStatus;
-  indicator_type: 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT'; // Only for INFLUENCER/SMR
-  sub_category: 'INFLUENCER' | 'SMR';
+  indicator_type: 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT'; // Only for INFLUENCER
+  sub_category: 'INFLUENCER';
   target_type: 'ALL' | 'SPECIFIC'; // Broadcast or specific UPT
   target_upt?: string[]; // Array of UPT names (if SPECIFIC)
   created_by_user: string; // Admin User ID
@@ -158,7 +184,7 @@ export interface Instruction {
  * Simplified format with only 4 content fields
  */
 export interface InstructionFormData {
-  sub_category: 'INFLUENCER' | 'SMR' | '';
+  sub_category: 'INFLUENCER' | '';
   target_type: 'ALL' | 'SPECIFIC';
   target_upt: string[];
   title: string; // Judul Instruksi
@@ -233,27 +259,51 @@ export interface SubmissionFormData {
   nama_media?: string;
   // Skoring Media Sosial file upload
   file_id?: string;
-  // Influencer/SMR common fields
+  // Influencer common fields
   nomor_konten?: string;
-  // Influencer/SMR social media fields
+  // Influencer social media fields
   link_instagram_1?: string;
   username_instagram_1?: string;
   link_instagram_2?: string;
   username_instagram_2?: string;
+  link_instagram_3?: string;
+  username_instagram_3?: string;
+  link_ig_reels_1?: string;
+  username_ig_reels_1?: string;
+  link_ig_reels_2?: string;
+  username_ig_reels_2?: string;
+  link_ig_reels_3?: string;
+  username_ig_reels_3?: string;
   link_twitter_1?: string;
   username_twitter_1?: string;
   link_twitter_2?: string;
   username_twitter_2?: string;
+  link_twitter_3?: string;
+  username_twitter_3?: string;
+  link_facebook?: string;
+  username_facebook?: string;
+  link_threads_1?: string;
+  username_threads_1?: string;
+  link_threads_2?: string;
+  username_threads_2?: string;
+  link_threads_3?: string;
+  username_threads_3?: string;
   link_youtube_1?: string;
   username_youtube_1?: string;
   link_youtube_2?: string;
   username_youtube_2?: string;
+  link_youtube_3?: string;
+  username_youtube_3?: string;
+  link_yt_video_1?: string;
+  username_yt_video_1?: string;
+  link_yt_video_2?: string;
+  username_yt_video_2?: string;
+  link_yt_video_3?: string;
+  username_yt_video_3?: string;
   link_tiktok?: string;
   username_tiktok?: string;
   link_tiktok_2?: string;
   username_tiktok_2?: string;
-  link_facebook?: string;
-  username_facebook?: string;
 }
 
 /**
@@ -342,20 +392,44 @@ export interface FormErrors {
   username_instagram_1?: string;
   link_instagram_2?: string;
   username_instagram_2?: string;
+  link_instagram_3?: string;
+  username_instagram_3?: string;
+  link_ig_reels_1?: string;
+  username_ig_reels_1?: string;
+  link_ig_reels_2?: string;
+  username_ig_reels_2?: string;
+  link_ig_reels_3?: string;
+  username_ig_reels_3?: string;
   link_twitter_1?: string;
   username_twitter_1?: string;
   link_twitter_2?: string;
   username_twitter_2?: string;
+  link_twitter_3?: string;
+  username_twitter_3?: string;
+  link_facebook?: string;
+  username_facebook?: string;
+  link_threads_1?: string;
+  username_threads_1?: string;
+  link_threads_2?: string;
+  username_threads_2?: string;
+  link_threads_3?: string;
+  username_threads_3?: string;
   link_youtube_1?: string;
   username_youtube_1?: string;
   link_youtube_2?: string;
   username_youtube_2?: string;
+  link_youtube_3?: string;
+  username_youtube_3?: string;
+  link_yt_video_1?: string;
+  username_yt_video_1?: string;
+  link_yt_video_2?: string;
+  username_yt_video_2?: string;
+  link_yt_video_3?: string;
+  username_yt_video_3?: string;
   link_tiktok?: string;
   username_tiktok?: string;
   link_tiktok_2?: string;
   username_tiktok_2?: string;
-  link_facebook?: string;
-  username_facebook?: string;
 }
 
 export interface ValidationResult {

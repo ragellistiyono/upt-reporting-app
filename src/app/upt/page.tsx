@@ -59,7 +59,7 @@ export default function UPTDashboardPage() {
         const response = await databases.listDocuments(
           APPWRITE_CONFIG.DATABASE_ID,
           APPWRITE_CONFIG.COLLECTIONS.SUBMISSIONS,
-          [Query.equal('submitted_by_user', user.$id), Query.orderDesc('$createdAt')]
+          [Query.equal('submitted_by_user', user.$id), Query.orderDesc('$createdAt'), Query.limit(1000)]
         );
 
         setSubmissions(response.documents as unknown as Submission[]);
@@ -219,7 +219,12 @@ export default function UPTDashboardPage() {
       CHART_INDICATOR_CONFIG.forEach(cfg => {
         if (cfg.subCategory) {
           if (sub.indicator_type === cfg.indicatorType && sub.sub_category === cfg.subCategory) {
-            counts[cfg.key]++;
+            // Media Sosial: sum skor instead of counting documents
+            if (cfg.key === 'ind3b') {
+              counts[cfg.key] += (sub.skor_media_sosial || 0);
+            } else {
+              counts[cfg.key]++;
+            }
           }
         } else {
           if (sub.indicator_type === cfg.indicatorType) {
@@ -278,7 +283,12 @@ export default function UPTDashboardPage() {
       CHART_INDICATOR_CONFIG.forEach(cfg => {
         if (cfg.subCategory) {
           if (sub.indicator_type === cfg.indicatorType && sub.sub_category === cfg.subCategory) {
-            countsByKey[cfg.key]++;
+            // Media Sosial: sum skor instead of counting documents
+            if (cfg.key === 'ind3b') {
+              countsByKey[cfg.key] += (sub.skor_media_sosial || 0);
+            } else {
+              countsByKey[cfg.key]++;
+            }
           }
         } else {
           if (sub.indicator_type === cfg.indicatorType) {
@@ -291,7 +301,16 @@ export default function UPTDashboardPage() {
     // Build target map per chart key
     const targetsByKey: Record<string, number> = {};
     targets.forEach((target) => {
-      if (indicatorFilter !== 'all' && target.indicator_type !== indicatorFilter) return;
+      if (indicatorFilter !== 'all') {
+        // Handle split target types: submissions use combined 'SKORING MEDIA MASSA DAN MEDIA SOSIAL'
+        // but targets are stored as separate 'SKORING MEDIA MASSA' / 'SKORING MEDIA SOSIAL'
+        if (indicatorFilter === 'SKORING MEDIA MASSA DAN MEDIA SOSIAL') {
+          const tType = target.indicator_type as string;
+          if (tType !== 'SKORING MEDIA MASSA' && tType !== 'SKORING MEDIA SOSIAL') return;
+        } else {
+          if (target.indicator_type !== indicatorFilter) return;
+        }
+      }
       CHART_INDICATOR_CONFIG.forEach(cfg => {
         if (cfg.subCategory) {
           const splitTargetType = cfg.subCategory === 'MEDIA MASSA' ? 'SKORING MEDIA MASSA' : 'SKORING MEDIA SOSIAL';
@@ -306,11 +325,16 @@ export default function UPTDashboardPage() {
       });
     });
 
-    return CHART_INDICATOR_CONFIG.map(cfg => ({
-      name: cfg.fullLabel,
-      realisasi: countsByKey[cfg.key] || 0,
-      target: targetsByKey[cfg.key] || 0,
-    }));
+    return CHART_INDICATOR_CONFIG.map(cfg => {
+      const realisasi = countsByKey[cfg.key] || 0;
+      const target = targetsByKey[cfg.key] || 0;
+      return {
+        name: cfg.fullLabel,
+        realisasi,
+        target,
+        capaian: target > 0 ? Math.round((realisasi / target) * 100) : 0,
+      };
+    });
   }, [submissions, targets, indicatorFilter]);
 
   // Calculate summary statistics for Rekap Visualisasi
@@ -351,6 +375,23 @@ export default function UPTDashboardPage() {
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  // Custom tooltip for percentage mode (Semua Indikator)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderPercentageTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="font-semibold text-gray-800 mb-1">{label}</p>
+          <p className="text-sm text-blue-600">Capaian: {data.capaian}%</p>
+          <p className="text-sm text-gray-600">Realisasi: {data.realisasi.toLocaleString()}</p>
+          <p className="text-sm text-purple-600">Target: {data.target.toLocaleString()}</p>
+        </div>
+      );
+    }
+    return null;
   };
 
   if (isLoading) {
@@ -777,7 +818,12 @@ export default function UPTDashboardPage() {
 
             {/* Bar Chart */}
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
-              <h3 className="text-md font-semibold text-gray-700 mb-4">Performa per Indikator</h3>
+              <h3 className="text-md font-semibold text-gray-700 mb-4">
+                Performa per Indikator
+                {indicatorFilter === 'all' && (
+                  <span className="text-xs font-normal text-gray-400 ml-2">(dalam % capaian)</span>
+                )}
+              </h3>
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart
                   data={chartDataByIndicator}
@@ -793,40 +839,85 @@ export default function UPTDashboardPage() {
                     interval={0}
                     style={{ fontSize: '11px', fill: '#6B7280' }}
                   />
-                  <YAxis 
-                    stroke="#6B7280"
-                    style={{ fontSize: '12px', fill: '#6B7280' }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E5E7EB',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                    labelStyle={{ color: '#374151', fontWeight: 'bold' }}
-                  />
+                  {indicatorFilter === 'all' ? (
+                    <YAxis 
+                      stroke="#6B7280"
+                      style={{ fontSize: '12px', fill: '#6B7280' }}
+                      domain={[0, 100]}
+                      tickFormatter={(v: number) => `${v}%`}
+                    />
+                  ) : (
+                    <YAxis 
+                      stroke="#6B7280"
+                      style={{ fontSize: '12px', fill: '#6B7280' }}
+                    />
+                  )}
+                  {indicatorFilter === 'all' ? (
+                    <Tooltip content={renderPercentageTooltip} />
+                  ) : (
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      labelStyle={{ color: '#374151', fontWeight: 'bold' }}
+                    />
+                  )}
                   <Legend />
-                  <Bar dataKey="target" fill="#C4B5FD" name="Target" opacity={0.6} />
-                  <Bar dataKey="realisasi" name="Realisasi">
-                    {chartDataByIndicator.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`}
-                        fill={entry.realisasi >= entry.target ? '#10B981' : '#0072BC'}
-                      />
-                    ))}
-                  </Bar>
+                  {indicatorFilter === 'all' ? (
+                    <Bar dataKey="capaian" name="Capaian (%)">
+                      {chartDataByIndicator.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`}
+                          fill={entry.capaian >= 80 ? '#10B981' : entry.capaian >= 40 ? '#F59E0B' : '#EF4444'}
+                        />
+                      ))}
+                    </Bar>
+                  ) : (
+                    <>
+                      <Bar dataKey="target" fill="#C4B5FD" name="Target" opacity={0.6} />
+                      <Bar dataKey="realisasi" name="Realisasi">
+                        {chartDataByIndicator.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`}
+                            fill={entry.realisasi >= entry.target ? '#10B981' : '#0072BC'}
+                          />
+                        ))}
+                      </Bar>
+                    </>
+                  )}
                 </BarChart>
               </ResponsiveContainer>
               <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-pln-blue rounded"></div>
-                  <span className="text-gray-600">Di bawah target</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
-                  <span className="text-gray-600">Target tercapai</span>
-                </div>
+                {indicatorFilter === 'all' ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-red-500 rounded"></div>
+                      <span className="text-gray-600">&lt; 40%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                      <span className="text-gray-600">40% - 79%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-500 rounded"></div>
+                      <span className="text-gray-600">≥ 80%</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-pln-blue rounded"></div>
+                      <span className="text-gray-600">Di bawah target</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-500 rounded"></div>
+                      <span className="text-gray-600">Target tercapai</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

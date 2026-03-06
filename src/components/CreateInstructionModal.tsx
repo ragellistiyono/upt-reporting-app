@@ -20,7 +20,7 @@ export default function CreateInstructionModal({
   adminName
 }: CreateInstructionModalProps) {
   // Form state - simplified to 4 fields only
-  const [subCategory, setSubCategory] = useState<'INFLUENCER' | 'SMR' | ''>('');
+  const [subCategory, setSubCategory] = useState<'INFLUENCER' | ''>('');
   const [targetType, setTargetType] = useState<'ALL' | 'SPECIFIC'>('ALL');
   const [selectedUPTs, setSelectedUPTs] = useState<string[]>([]);
   const [title, setTitle] = useState('');
@@ -53,7 +53,7 @@ export default function CreateInstructionModal({
   const validateForm = (): boolean => {
     // Sub-category required
     if (!subCategory) {
-      setError('Pilih sub-category (INFLUENCER atau SMR)');
+      setError('Sub-category INFLUENCER wajib dipilih');
       return false;
     }
 
@@ -156,7 +156,7 @@ export default function CreateInstructionModal({
                 Buat Instruksi Baru
               </h2>
               <p className="text-blue-100 text-sm mt-1">
-                Buat instruksi untuk UPT (INFLUENCER / SMR)
+                Buat instruksi untuk UPT (Influencer)
               </p>
             </div>
             <button
@@ -192,14 +192,13 @@ export default function CreateInstructionModal({
             </label>
             <select
               value={subCategory}
-              onChange={(e) => setSubCategory(e.target.value as 'INFLUENCER' | 'SMR' | '')}
+              onChange={(e) => setSubCategory(e.target.value as 'INFLUENCER' | '')}
               required
               disabled={isSubmitting}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-pln-blue focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-800 bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">-- Pilih Sub-Category --</option>
-              <option value="INFLUENCER">INFLUENCER</option>
-              <option value="SMR">SMR</option>
+              <option value="">— Pilih Sub-Kategori —</option>
+              <option value="INFLUENCER">Influencer</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
               Pilih target audience untuk instruksi ini

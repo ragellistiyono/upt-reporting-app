@@ -93,13 +93,11 @@ export const MONTHS = [
 // ============================================================================
 
 export const SUB_CATEGORIES = [
-  'INFLUENCER',
-  'SMR'
+  'INFLUENCER'
 ] as const;
 
 export const SUB_CATEGORY_LABELS: Record<string, string> = {
-  'INFLUENCER': 'Influencer',
-  'SMR': 'SMR'
+  'INFLUENCER': 'Influencer'
 };
 
 // ============================================================================

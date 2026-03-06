@@ -274,9 +274,15 @@ export default function AdminDashboardPage() {
       CHART_INDICATOR_CONFIG.forEach(cfg => {
         if (cfg.subCategory) {
           // Split indicator (Media Massa / Media Sosial)
-          row[cfg.key] = uptSubmissions.filter(
+          const matched = uptSubmissions.filter(
             s => s.indicator_type === cfg.indicatorType && s.sub_category === cfg.subCategory
-          ).length;
+          );
+          // Media Sosial: sum skor instead of counting documents
+          if (cfg.key === 'ind3b') {
+            row[cfg.key] = matched.reduce((sum, s) => sum + (s.skor_media_sosial || 0), 0);
+          } else {
+            row[cfg.key] = matched.length;
+          }
         } else {
           row[cfg.key] = uptSubmissions.filter(
             s => s.indicator_type === cfg.indicatorType
@@ -492,69 +498,108 @@ export default function AdminDashboardPage() {
           baseData['File ID'] = sub.file_id || '';
         }
       } else if (sub.indicator_type === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT') {
-        // Influencer/SMR fields
+        // Influencer fields
         baseData['Nomor Konten'] = sub.nomor_konten || '';
         baseData['Judul'] = sub.title || '';
 
-        // Add social media links based on sub-category
-        if (sub.sub_category === 'INFLUENCER') {
-          // Instagram (2 accounts)
-          if (sub.link_instagram_1) {
-            baseData['Instagram 1 - Link'] = sub.link_instagram_1;
-            baseData['Instagram 1 - Username'] = sub.username_instagram_1 || '';
-          }
-          if (sub.link_instagram_2) {
-            baseData['Instagram 2 - Link'] = sub.link_instagram_2;
-            baseData['Instagram 2 - Username'] = sub.username_instagram_2 || '';
-          }
-          
-          // Twitter (2 accounts)
-          if (sub.link_twitter_1) {
-            baseData['Twitter 1 - Link'] = sub.link_twitter_1;
-            baseData['Twitter 1 - Username'] = sub.username_twitter_1 || '';
-          }
-          if (sub.link_twitter_2) {
-            baseData['Twitter 2 - Link'] = sub.link_twitter_2;
-            baseData['Twitter 2 - Username'] = sub.username_twitter_2 || '';
-          }
-          
-          // YouTube (2 channels)
-          if (sub.link_youtube_1) {
-            baseData['YouTube 1 - Link'] = sub.link_youtube_1;
-            baseData['YouTube 1 - Channel'] = sub.username_youtube_1 || '';
-          }
-          if (sub.link_youtube_2) {
-            baseData['YouTube 2 - Link'] = sub.link_youtube_2;
-            baseData['YouTube 2 - Channel'] = sub.username_youtube_2 || '';
-          }
-          
-          // TikTok (2 accounts)
-          if (sub.link_tiktok) {
-            baseData['TikTok 1 - Link'] = sub.link_tiktok;
-            baseData['TikTok 1 - Username'] = sub.username_tiktok || '';
-          }
-          if (sub.link_tiktok_2) {
-            baseData['TikTok 2 - Link'] = sub.link_tiktok_2;
-            baseData['TikTok 2 - Username'] = sub.username_tiktok_2 || '';
-          }
-        } else if (sub.sub_category === 'SMR') {
-          // Instagram (1 account)
-          if (sub.link_instagram_1) {
-            baseData['Instagram - Link'] = sub.link_instagram_1;
-            baseData['Instagram - Username'] = sub.username_instagram_1 || '';
-          }
-          
-          // Facebook (1 account)
-          if (sub.link_facebook) {
-            baseData['Facebook - Link'] = sub.link_facebook;
-            baseData['Facebook - Username'] = sub.username_facebook || '';
-          }
-          
-          // Twitter (1 account)
-          if (sub.link_twitter_1) {
-            baseData['Twitter - Link'] = sub.link_twitter_1;
-            baseData['Twitter - Username'] = sub.username_twitter_1 || '';
-          }
+        // Instagram Feed (3 accounts)
+        if (sub.link_instagram_1) {
+          baseData['IG Feed 1 - Link'] = sub.link_instagram_1;
+          baseData['IG Feed 1 - Username'] = sub.username_instagram_1 || '';
+        }
+        if (sub.link_instagram_2) {
+          baseData['IG Feed 2 - Link'] = sub.link_instagram_2;
+          baseData['IG Feed 2 - Username'] = sub.username_instagram_2 || '';
+        }
+        if (sub.link_instagram_3) {
+          baseData['IG Feed 3 - Link'] = sub.link_instagram_3;
+          baseData['IG Feed 3 - Username'] = sub.username_instagram_3 || '';
+        }
+        
+        // Instagram Reels (3 accounts)
+        if (sub.link_ig_reels_1) {
+          baseData['IG Reels 1 - Link'] = sub.link_ig_reels_1;
+          baseData['IG Reels 1 - Username'] = sub.username_ig_reels_1 || '';
+        }
+        if (sub.link_ig_reels_2) {
+          baseData['IG Reels 2 - Link'] = sub.link_ig_reels_2;
+          baseData['IG Reels 2 - Username'] = sub.username_ig_reels_2 || '';
+        }
+        if (sub.link_ig_reels_3) {
+          baseData['IG Reels 3 - Link'] = sub.link_ig_reels_3;
+          baseData['IG Reels 3 - Username'] = sub.username_ig_reels_3 || '';
+        }
+        
+        // Twitter/X (3 accounts)
+        if (sub.link_twitter_1) {
+          baseData['Twitter 1 - Link'] = sub.link_twitter_1;
+          baseData['Twitter 1 - Username'] = sub.username_twitter_1 || '';
+        }
+        if (sub.link_twitter_2) {
+          baseData['Twitter 2 - Link'] = sub.link_twitter_2;
+          baseData['Twitter 2 - Username'] = sub.username_twitter_2 || '';
+        }
+        if (sub.link_twitter_3) {
+          baseData['Twitter 3 - Link'] = sub.link_twitter_3;
+          baseData['Twitter 3 - Username'] = sub.username_twitter_3 || '';
+        }
+        
+        // Facebook (1 account)
+        if (sub.link_facebook) {
+          baseData['Facebook - Link'] = sub.link_facebook;
+          baseData['Facebook - Username'] = sub.username_facebook || '';
+        }
+        
+        // Threads (3 accounts)
+        if (sub.link_threads_1) {
+          baseData['Threads 1 - Link'] = sub.link_threads_1;
+          baseData['Threads 1 - Username'] = sub.username_threads_1 || '';
+        }
+        if (sub.link_threads_2) {
+          baseData['Threads 2 - Link'] = sub.link_threads_2;
+          baseData['Threads 2 - Username'] = sub.username_threads_2 || '';
+        }
+        if (sub.link_threads_3) {
+          baseData['Threads 3 - Link'] = sub.link_threads_3;
+          baseData['Threads 3 - Username'] = sub.username_threads_3 || '';
+        }
+        
+        // YouTube Short (3 channels)
+        if (sub.link_youtube_1) {
+          baseData['YT Short 1 - Link'] = sub.link_youtube_1;
+          baseData['YT Short 1 - Channel'] = sub.username_youtube_1 || '';
+        }
+        if (sub.link_youtube_2) {
+          baseData['YT Short 2 - Link'] = sub.link_youtube_2;
+          baseData['YT Short 2 - Channel'] = sub.username_youtube_2 || '';
+        }
+        if (sub.link_youtube_3) {
+          baseData['YT Short 3 - Link'] = sub.link_youtube_3;
+          baseData['YT Short 3 - Channel'] = sub.username_youtube_3 || '';
+        }
+        
+        // YouTube Video (3 channels)
+        if (sub.link_yt_video_1) {
+          baseData['YT Video 1 - Link'] = sub.link_yt_video_1;
+          baseData['YT Video 1 - Channel'] = sub.username_yt_video_1 || '';
+        }
+        if (sub.link_yt_video_2) {
+          baseData['YT Video 2 - Link'] = sub.link_yt_video_2;
+          baseData['YT Video 2 - Channel'] = sub.username_yt_video_2 || '';
+        }
+        if (sub.link_yt_video_3) {
+          baseData['YT Video 3 - Link'] = sub.link_yt_video_3;
+          baseData['YT Video 3 - Channel'] = sub.username_yt_video_3 || '';
+        }
+        
+        // TikTok (2 accounts)
+        if (sub.link_tiktok) {
+          baseData['TikTok 1 - Link'] = sub.link_tiktok;
+          baseData['TikTok 1 - Username'] = sub.username_tiktok || '';
+        }
+        if (sub.link_tiktok_2) {
+          baseData['TikTok 2 - Link'] = sub.link_tiktok_2;
+          baseData['TikTok 2 - Username'] = sub.username_tiktok_2 || '';
         }
       } else {
         // Standard fields for other indicator types
@@ -1273,7 +1318,7 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
-                {/* INFLUENCER / SMR */}
+                {/* INFLUENCER */}
                 {selectedSubmission.indicator_type === 'PENGELOLAAN INFLUENCER MEDIA SOSIAL UNIT' && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1288,15 +1333,27 @@ export default function AdminDashboardPage() {
                     </div>
                     {/* Social media links */}
                     {[
-                      { label: 'Instagram 1', link: selectedSubmission.link_instagram_1, user: selectedSubmission.username_instagram_1 },
-                      { label: 'Instagram 2', link: selectedSubmission.link_instagram_2, user: selectedSubmission.username_instagram_2 },
+                      { label: 'IG Feed 1', link: selectedSubmission.link_instagram_1, user: selectedSubmission.username_instagram_1 },
+                      { label: 'IG Feed 2', link: selectedSubmission.link_instagram_2, user: selectedSubmission.username_instagram_2 },
+                      { label: 'IG Feed 3', link: selectedSubmission.link_instagram_3, user: selectedSubmission.username_instagram_3 },
+                      { label: 'IG Reels 1', link: selectedSubmission.link_ig_reels_1, user: selectedSubmission.username_ig_reels_1 },
+                      { label: 'IG Reels 2', link: selectedSubmission.link_ig_reels_2, user: selectedSubmission.username_ig_reels_2 },
+                      { label: 'IG Reels 3', link: selectedSubmission.link_ig_reels_3, user: selectedSubmission.username_ig_reels_3 },
                       { label: 'Twitter/X 1', link: selectedSubmission.link_twitter_1, user: selectedSubmission.username_twitter_1 },
                       { label: 'Twitter/X 2', link: selectedSubmission.link_twitter_2, user: selectedSubmission.username_twitter_2 },
-                      { label: 'YouTube 1', link: selectedSubmission.link_youtube_1, user: selectedSubmission.username_youtube_1 },
-                      { label: 'YouTube 2', link: selectedSubmission.link_youtube_2, user: selectedSubmission.username_youtube_2 },
+                      { label: 'Twitter/X 3', link: selectedSubmission.link_twitter_3, user: selectedSubmission.username_twitter_3 },
+                      { label: 'Facebook', link: selectedSubmission.link_facebook, user: selectedSubmission.username_facebook },
+                      { label: 'Threads 1', link: selectedSubmission.link_threads_1, user: selectedSubmission.username_threads_1 },
+                      { label: 'Threads 2', link: selectedSubmission.link_threads_2, user: selectedSubmission.username_threads_2 },
+                      { label: 'Threads 3', link: selectedSubmission.link_threads_3, user: selectedSubmission.username_threads_3 },
+                      { label: 'YT Short 1', link: selectedSubmission.link_youtube_1, user: selectedSubmission.username_youtube_1 },
+                      { label: 'YT Short 2', link: selectedSubmission.link_youtube_2, user: selectedSubmission.username_youtube_2 },
+                      { label: 'YT Short 3', link: selectedSubmission.link_youtube_3, user: selectedSubmission.username_youtube_3 },
+                      { label: 'YT Video 1', link: selectedSubmission.link_yt_video_1, user: selectedSubmission.username_yt_video_1 },
+                      { label: 'YT Video 2', link: selectedSubmission.link_yt_video_2, user: selectedSubmission.username_yt_video_2 },
+                      { label: 'YT Video 3', link: selectedSubmission.link_yt_video_3, user: selectedSubmission.username_yt_video_3 },
                       { label: 'TikTok 1', link: selectedSubmission.link_tiktok, user: selectedSubmission.username_tiktok },
                       { label: 'TikTok 2', link: selectedSubmission.link_tiktok_2, user: selectedSubmission.username_tiktok_2 },
-                      { label: 'Facebook', link: selectedSubmission.link_facebook, user: selectedSubmission.username_facebook },
                     ].filter(item => item.link).map((item, idx) => (
                       <div key={idx} className="bg-gray-50 rounded-lg p-3">
                         <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">{item.label}</p>
